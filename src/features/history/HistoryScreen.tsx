@@ -83,7 +83,7 @@ export const HistoryScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* History List */}
+      {/* History Grid */}
       {filteredSessions.length === 0 ? (
         <EmptyState
           icon={<History size={36} />}
@@ -97,7 +97,7 @@ export const HistoryScreen: React.FC = () => {
           onAction={() => navigate('/workouts')}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredSessions.map((session) => (
             <WorkoutHistoryCard
               key={session.id}

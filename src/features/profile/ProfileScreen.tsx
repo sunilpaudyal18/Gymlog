@@ -134,7 +134,7 @@ export const ProfileScreen: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col px-4 pt-3 pb-24 space-y-5 animate-fade-in max-w-md mx-auto select-none">
+    <div className="flex flex-col space-y-6 animate-fade-in select-none w-full">
       {/* Hidden File Input for Profile Photo Upload */}
       <input
         ref={fileInputRef}
@@ -144,7 +144,7 @@ export const ProfileScreen: React.FC = () => {
         className="hidden"
       />
 
-      {/* 1. Seamless Organic Profile Header (No box/border enclosure & Larger borderless Avatar) */}
+      {/* 1. Seamless Organic Profile Header */}
       <div className="flex items-center justify-between pt-1 pb-1">
         <div className="flex items-center gap-4">
           {/* Avatar Container with Tap to Upload */}
@@ -215,120 +215,125 @@ export const ProfileScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* 2. Interactive Progress Summary Card (Opens Progress Modal) */}
-      <div
-        onClick={() => setShowProgressModal(true)}
-        className="bg-white/80 border border-[#CBD5E1] hover:border-[#008B8E] rounded-3xl p-5 shadow-sm space-y-4 cursor-pointer transition-all duration-200 group relative backdrop-blur-md"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#008B8E]/10 text-[#008B8E] flex items-center justify-center">
-              <TrendingUp size={18} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors">
-                Progress & Performance
-              </h3>
-              <p className="text-[11px] text-[#475569]">Tap for comprehensive deep-dive</p>
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-[#94A3B8] group-hover:text-[#008B8E] group-hover:translate-x-0.5 transition-all" />
-        </div>
-
-        {/* 3 Metric Pills */}
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-            <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
-              WORKOUTS
-            </span>
-            <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
-              {stats.totalWorkouts}
-            </span>
-          </div>
-
-          <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-            <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
-              VOLUME
-            </span>
-            <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
-              {stats.totalVolumeKg > 1000
-                ? `${(stats.totalVolumeKg / 1000).toFixed(1)}k`
-                : stats.totalVolumeKg}
-              <span className="text-xs font-normal text-[#64748B] ml-0.5">kg</span>
-            </span>
-          </div>
-
-          <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-            <span className="text-[10px] font-bold text-[#D96B27] uppercase block tracking-wider flex items-center justify-center gap-0.5">
-              <Flame size={11} className="fill-[#D96B27]" />
-              <span>THIS WEEK</span>
-            </span>
-            <span className="font-mono-metric font-bold text-lg text-[#D96B27]">
-              {stats.thisWeekCount}
-              <span className="text-xs font-normal text-[#D96B27]/70 ml-0.5">days</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Mini Consistency Strip */}
-        <div className="flex items-center justify-between pt-1 border-t border-[#CBD5E1]/60">
-          <span className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
-            This Week's Activity
-          </span>
-          <div className="flex items-center gap-1.5">
-            {weeklyDays.map((d, i) => (
-              <div
-                key={i}
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold font-mono-metric transition-all ${
-                  d.hasWorkout
-                    ? 'bg-[#008B8E] text-white shadow-xs'
-                    : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#CBD5E1]'
-                }`}
-                title={`${d.dayName}: ${d.hasWorkout ? 'Workout completed' : 'Rest day'}`}
-              >
-                {d.short[0]}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Systematic Settings & Preferences Menu */}
-      <div className="space-y-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
-          Settings & Preferences
-        </span>
-
-        <div className="bg-white/80 border border-[#CBD5E1] rounded-3xl overflow-hidden divide-y divide-[#E2E8F0] shadow-sm backdrop-blur-md">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={item.onClick}
-                className="w-full p-4 flex items-center justify-between hover:bg-[#F8FAFC] active:bg-[#F1F5F9] transition-colors text-left cursor-pointer group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                  <div className="w-10 h-10 rounded-2xl bg-[#008B8E]/10 border border-[#008B8E]/20 text-[#008B8E] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Icon size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors truncate">
-                      {item.label}
-                    </h4>
-                    <p className="text-xs text-[#475569] font-medium truncate mt-0.5">
-                      {item.subtitle}
-                    </p>
-                  </div>
+      {/* 2-Column Responsive Split on Tablet/Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Progress Performance Overview */}
+        <div className="lg:col-span-5 space-y-4">
+          <div
+            onClick={() => setShowProgressModal(true)}
+            className="bg-white/80 border border-[#CBD5E1] hover:border-[#008B8E] rounded-3xl p-5 shadow-sm space-y-4 cursor-pointer transition-all duration-200 group relative backdrop-blur-md"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#008B8E]/10 text-[#008B8E] flex items-center justify-center">
+                  <TrendingUp size={18} />
                 </div>
-                <ChevronRight
-                  size={18}
-                  className="text-[#94A3B8] group-hover:text-[#0F172A] group-hover:translate-x-0.5 transition-all shrink-0"
-                />
-              </button>
-            );
-          })}
+                <div>
+                  <h3 className="text-sm font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors">
+                    Progress & Performance
+                  </h3>
+                  <p className="text-[11px] text-[#475569]">Tap for comprehensive deep-dive</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-[#94A3B8] group-hover:text-[#008B8E] group-hover:translate-x-0.5 transition-all" />
+            </div>
+
+            {/* 3 Metric Pills */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
+                <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
+                  WORKOUTS
+                </span>
+                <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
+                  {stats.totalWorkouts}
+                </span>
+              </div>
+
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
+                <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
+                  VOLUME
+                </span>
+                <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
+                  {stats.totalVolumeKg > 1000
+                    ? `${(stats.totalVolumeKg / 1000).toFixed(1)}k`
+                    : stats.totalVolumeKg}
+                  <span className="text-xs font-normal text-[#64748B] ml-0.5">kg</span>
+                </span>
+              </div>
+
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
+                <span className="text-[10px] font-bold text-[#D96B27] uppercase block tracking-wider flex items-center justify-center gap-0.5">
+                  <Flame size={11} className="fill-[#D96B27]" />
+                  <span>THIS WEEK</span>
+                </span>
+                <span className="font-mono-metric font-bold text-lg text-[#D96B27]">
+                  {stats.thisWeekCount}
+                  <span className="text-xs font-normal text-[#D96B27]/70 ml-0.5">days</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Mini Consistency Strip */}
+            <div className="flex items-center justify-between pt-1 border-t border-[#CBD5E1]/60">
+              <span className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
+                This Week's Activity
+              </span>
+              <div className="flex items-center gap-1.5">
+                {weeklyDays.map((d, i) => (
+                  <div
+                    key={i}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold font-mono-metric transition-all ${
+                      d.hasWorkout
+                        ? 'bg-[#008B8E] text-white shadow-xs'
+                        : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#CBD5E1]'
+                    }`}
+                    title={`${d.dayName}: ${d.hasWorkout ? 'Workout completed' : 'Rest day'}`}
+                  >
+                    {d.short[0]}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Systematic Settings & Preferences Menu */}
+        <div className="lg:col-span-7 space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
+            Settings & Preferences
+          </span>
+
+          <div className="bg-white/80 border border-[#CBD5E1] rounded-3xl overflow-hidden divide-y divide-[#E2E8F0] shadow-sm backdrop-blur-md">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={item.onClick}
+                  className="w-full p-4 flex items-center justify-between hover:bg-[#F8FAFC] active:bg-[#F1F5F9] transition-colors text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                    <div className="w-10 h-10 rounded-2xl bg-[#008B8E]/10 border border-[#008B8E]/20 text-[#008B8E] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Icon size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors truncate">
+                        {item.label}
+                      </h4>
+                      <p className="text-xs text-[#475569] font-medium truncate mt-0.5">
+                        {item.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight
+                    size={18}
+                    className="text-[#94A3B8] group-hover:text-[#0F172A] group-hover:translate-x-0.5 transition-all shrink-0"
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

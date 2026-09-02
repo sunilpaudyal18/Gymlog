@@ -91,45 +91,87 @@ export const ExercisesScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col px-4 pt-4 pb-24 space-y-4 animate-fade-in relative select-none max-w-[480px] w-full mx-auto box-border">
+    <div className="flex flex-col space-y-5 animate-fade-in relative select-none w-full box-border">
       {/* 1. Top Header: Title & Create Action */}
       <div className="flex items-center justify-between pt-1">
-        <h1 className="text-3xl font-bold text-[#0F172A] tracking-tight">
-          Exercises
-        </h1>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
+            Exercises
+          </h1>
+          <p className="text-xs sm:text-sm text-[#475569] mt-0.5 font-medium">
+            Explore canonical movements and target muscle groups
+          </p>
+        </div>
+
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="w-9 h-9 rounded-full bg-[#008B8E]/10 text-[#008B8E] border border-[#008B8E]/30 hover:bg-[#008B8E] hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
-          aria-label="Create Custom Exercise"
-          title="Create custom exercise"
+          className="bg-[#008B8E] hover:bg-[#00A3A6] active:bg-[#007A7C] text-white font-bold py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs uppercase tracking-wider shrink-0"
         >
-          <Plus size={20} className="stroke-[2.5]" />
+          <Plus size={16} className="stroke-[2.5]" />
+          <span>New Custom</span>
         </button>
       </div>
 
-      {/* 2. Global Search Bar */}
-      <SearchInput
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onClear={() => setSearchQuery('')}
-        placeholder="Search exercises by name, muscle, equipment..."
-      />
+      {/* 2. Search Input */}
+      <div className="sticky top-0 z-20 bg-[#F4F6F9]/90 backdrop-blur-md py-1">
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name, muscle, equipment..."
+        />
+      </div>
 
-      {/* 3. Immersive 2-Column Full-Color 3:4 Legend Grid */}
-      {!searchQuery && (
-        <div className="space-y-3 pt-1 w-full">
-          <div className="flex items-center justify-between px-0.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
-              BROWSE BY MUSCLE
+      {/* 3. Dynamic Rendering: Search Results vs Muscle Category Grid */}
+      {searchQuery.trim() ? (
+        <div className="space-y-3 pb-8">
+          <div className="flex items-center justify-between text-xs font-bold uppercase text-[#475569]">
+            <span>Search Results ({filteredExercises.length})</span>
+            {multiSelectedIds.length > 0 && (
+              <span className="text-[#008B8E]">{multiSelectedIds.length} Selected</span>
+            )}
+          </div>
+
+          {filteredExercises.length === 0 ? (
+            <EmptyState
+              icon={<Search size={36} />}
+              title="No exercises found"
+              description={`No exercises matching "${searchQuery}".`}
+              actionLabel="CREATE CUSTOM EXERCISE"
+              onAction={() => setShowCreateModal(true)}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredExercises.map((ex) => (
+                <ExerciseCard
+                  key={ex.id}
+                  exercise={ex}
+                  isFavorite={isFavorite(ex.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={handleExerciseClick}
+                  onAddClick={handleAddSingleToRoutine}
+                  isSelected={multiSelectedIds.includes(ex.id)}
+                  onSelect={() => toggleMultiSelect(ex.id)}
+                  showAddButton={true}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4 pb-8">
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
+              BROWSE BY TARGET MUSCLE
             </span>
-            <span className="text-[11px] font-bold text-[#008B8E] uppercase tracking-wider">
-              {MUSCLE_GROUPS_META.length} Masterclasses
+            <span className="text-xs text-[#008B8E] font-bold">
+              {MUSCLE_GROUPS_META.length} Muscle Groups
             </span>
           </div>
 
-          {/* 3:4 Aspect Ratio Grid with Exclusive Legend Binding */}
-          <div className="grid grid-cols-2 gap-3.5 w-full box-border">
+          {/* Responsive Muscle Categories Grid: 2-col mobile, 3-col tablet, 4-col desktop */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5 w-full box-border">
             {MUSCLE_GROUPS_META.map((group) => {
               const focalPosition =
                 group.id === 'abs' || group.id === 'forearms'

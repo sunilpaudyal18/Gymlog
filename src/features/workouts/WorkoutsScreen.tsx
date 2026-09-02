@@ -22,18 +22,30 @@ export const WorkoutsScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col px-4 pt-6 pb-8 space-y-5 animate-fade-in select-none">
-      {/* Page Title & Subtitle */}
-      <div>
-        <h1 className="text-3xl font-bold text-[#0F172A] tracking-tight">
-          My Routines
-        </h1>
-        <p className="text-sm text-[#475569] mt-1 font-medium">
-          Manage and perform your training templates
-        </p>
+    <div className="flex flex-col space-y-6 animate-fade-in select-none">
+      {/* Page Title & Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
+            My Routines
+          </h1>
+          <p className="text-xs sm:text-sm text-[#475569] mt-0.5 font-medium">
+            Manage and perform your training templates
+          </p>
+        </div>
+
+        {/* Desktop / Tablet Quick Action Button */}
+        <button
+          type="button"
+          onClick={() => navigate('/create-routine')}
+          className="hidden sm:inline-flex items-center gap-2 bg-[#008B8E] hover:bg-[#00A3A6] active:bg-[#007A7C] text-white font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all cursor-pointer text-xs uppercase tracking-wider shrink-0"
+        >
+          <Plus size={16} className="stroke-[2.5]" />
+          <span>New Routine</span>
+        </button>
       </div>
 
-      {/* Routine Cards List */}
+      {/* Routine Cards Grid */}
       {routines.length === 0 ? (
         <EmptyState
           icon={<Folder size={36} />}
@@ -43,7 +55,7 @@ export const WorkoutsScreen: React.FC = () => {
           onAction={() => navigate('/create-routine')}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {routines.map((routine) => (
             <RoutineCard
               key={routine.id}
@@ -57,15 +69,15 @@ export const WorkoutsScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Sticky Bottom + NEW ROUTINE button */}
-      <div className="pt-2">
+      {/* Mobile Sticky Bottom + NEW ROUTINE button */}
+      <div className="pt-2 sm:hidden">
         <button
           type="button"
           onClick={() => navigate('/create-routine')}
-          className="w-full bg-[#008B8E] text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 hover:bg-[#00A3A6] active:bg-[#007A7C] shadow-md transition-all cursor-pointer tracking-wider text-base uppercase"
+          className="w-full bg-[#008B8E] text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 hover:bg-[#00A3A6] active:bg-[#007A7C] shadow-md transition-all cursor-pointer tracking-wider text-sm uppercase"
           aria-label="Create New Routine"
         >
-          <Plus size={20} className="stroke-[2.5]" />
+          <Plus size={18} className="stroke-[2.5]" />
           <span>NEW ROUTINE</span>
         </button>
       </div>

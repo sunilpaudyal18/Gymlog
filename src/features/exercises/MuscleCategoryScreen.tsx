@@ -319,9 +319,9 @@ export const MuscleCategoryScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col px-4 pt-3 pb-24 space-y-4 animate-fade-in relative select-none max-w-[480px] w-full mx-auto box-border">
+    <div className="flex flex-col space-y-4 animate-fade-in relative select-none w-full box-border">
       {/* 1. Level 2: Cinematic Hero Header Banner */}
-      <div className="relative w-full h-56 rounded-[26px] overflow-hidden border-[1.5px] border-white/70 shadow-lg isolate">
+      <div className="relative w-full h-56 sm:h-64 lg:h-72 rounded-[26px] overflow-hidden border-[1.5px] border-white/70 shadow-lg isolate">
         {/* Full-bleed Full-Color Legend Photo */}
         <img
           src={groupMeta.imageUrl}
@@ -516,7 +516,7 @@ export const MuscleCategoryScreen: React.FC = () => {
             }}
           />
         ) : (
-          <div className="space-y-2.5 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full">
             {categoryExercises.map((ex) => (
               <ExerciseCard
                 key={ex.id}
@@ -536,7 +536,7 @@ export const MuscleCategoryScreen: React.FC = () => {
 
       {/* Floating Multi-Select Bottom Bar */}
       {multiSelectedIds.length > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 z-50 px-4 max-w-[480px] mx-auto animate-slide-up">
+        <div className="fixed bottom-20 left-0 right-0 z-50 px-4 max-w-md mx-auto animate-slide-up">
           <button
             type="button"
             onClick={handleAddMultiToRoutine}

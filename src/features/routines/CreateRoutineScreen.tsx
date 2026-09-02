@@ -203,7 +203,7 @@ export const CreateRoutineScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col px-4 pt-3 pb-24 space-y-5 animate-fade-in select-none max-w-[480px] w-full mx-auto box-border">
+    <div className="flex flex-col space-y-5 animate-fade-in select-none w-full box-border">
       {/* 1. Top Navigation Header with SAVE Action */}
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-2.5">
@@ -228,115 +228,121 @@ export const CreateRoutineScreen: React.FC = () => {
         <button
           type="button"
           onClick={handleSave}
-          className="bg-[#008B8E] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#00A3A6] transition-all cursor-pointer shadow-sm active:scale-95"
+          className="bg-[#008B8E] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#00A3A6] transition-all cursor-pointer shadow-sm active:scale-95"
         >
-          SAVE
+          SAVE ROUTINE
         </button>
       </div>
 
-      {/* 2. Routine Name Input Card */}
-      <div className="bg-white/85 border border-[#CBD5E1] rounded-2xl p-4 shadow-sm backdrop-blur-md space-y-2">
-        <label className="text-xs font-bold uppercase tracking-wider text-[#475569] block">
-          ROUTINE NAME
-        </label>
-        <input
-          type="text"
-          value={routineName}
-          onChange={(e) => {
-            setRoutineName(e.target.value);
-            if (nameError) setNameError('');
-          }}
-          placeholder="e.g. Chest + Triceps Focus"
-          className={`w-full bg-white border ${
-            nameError ? 'border-[#EF4444]' : 'border-[#CBD5E1]'
-          } rounded-xl px-3.5 py-2.5 text-[#0F172A] font-bold text-sm focus:outline-none focus:border-[#008B8E] transition-colors placeholder-[#94A3B8] shadow-xs`}
-        />
-        {nameError && <p className="text-xs text-[#EF4444] font-medium">{nameError}</p>}
-      </div>
-
-      {/* 3. Target Muscles Selection */}
-      <div className="space-y-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
-          TARGET MUSCLES
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {muscleOptions.map((m) => {
-            const isSelected = selectedMuscles.includes(m.id);
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => toggleMuscle(m.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border shadow-sm ${
-                  isSelected
-                    ? 'bg-[#008B8E] text-white border-[#008B8E] font-bold shadow-[0_2px_8px_rgba(0,139,142,0.25)]'
-                    : 'bg-white/80 text-[#475569] border-[#CBD5E1] hover:bg-white hover:text-[#0F172A]'
-                }`}
-              >
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. Selected Exercises Tray (Summary of Added Items) */}
-      {selectedExercises.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-1.5">
-              <Layers size={14} className="text-[#008B8E]" />
-              <span>SELECTED MOVEMENTS ({selectedExercises.length})</span>
-            </span>
-            <span className="text-[11px] font-semibold text-[#008B8E]">
-              ~{calculateEstimatedDurationMin(selectedExercises)} mins
-            </span>
+      {/* 2-Column Responsive Workspace on Tablet/Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Routine Parameters & Selected Movements Tray */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* 2. Routine Name Input Card */}
+          <div className="bg-white/85 border border-[#CBD5E1] rounded-2xl p-4 shadow-sm backdrop-blur-md space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#475569] block">
+              ROUTINE NAME
+            </label>
+            <input
+              type="text"
+              value={routineName}
+              onChange={(e) => {
+                setRoutineName(e.target.value);
+                if (nameError) setNameError('');
+              }}
+              placeholder="e.g. Chest + Triceps Focus"
+              className={`w-full bg-white border ${
+                nameError ? 'border-[#EF4444]' : 'border-[#CBD5E1]'
+              } rounded-xl px-3.5 py-2.5 text-[#0F172A] font-bold text-sm focus:outline-none focus:border-[#008B8E] transition-colors placeholder-[#94A3B8] shadow-xs`}
+            />
+            {nameError && <p className="text-xs text-[#EF4444] font-medium">{nameError}</p>}
           </div>
 
-          <div className="bg-white/85 border border-[#CBD5E1] rounded-2xl divide-y divide-[#E2E8F0] shadow-sm overflow-hidden backdrop-blur-md">
-            {selectedExercises.map((ex, idx) => (
-              <div
-                key={ex.id}
-                className="flex items-center justify-between p-3 hover:bg-[#F8FAFC] transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <span className="w-5 h-5 rounded-full bg-[#008B8E]/10 text-[#008B8E] text-[10px] font-bold font-mono-metric flex items-center justify-center shrink-0">
-                    {idx + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-[#0F172A] truncate">
-                      {ex.exerciseName}
-                    </h4>
-                    <span className="text-[11px] text-[#008B8E] font-semibold block capitalize">
-                      {ex.targetSets} sets × {ex.targetReps} reps • {ex.equipment}
-                    </span>
-                  </div>
-                </div>
+          {/* 3. Target Muscles Selection */}
+          <div className="space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
+              TARGET MUSCLES
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {muscleOptions.map((m) => {
+                const isSelected = selectedMuscles.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleMuscle(m.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border shadow-sm ${
+                      isSelected
+                        ? 'bg-[#008B8E] text-white border-[#008B8E] font-bold shadow-[0_2px_8px_rgba(0,139,142,0.25)]'
+                        : 'bg-white/80 text-[#475569] border-[#CBD5E1] hover:bg-white hover:text-[#0F172A]'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeSelectedExercise(ex.id)}
-                  className="w-7 h-7 rounded-lg text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                  title="Remove from routine"
-                >
-                  <Trash2 size={14} />
-                </button>
+          {/* 4. Selected Exercises Tray (Summary of Added Items) */}
+          {selectedExercises.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-1.5">
+                  <Layers size={14} className="text-[#008B8E]" />
+                  <span>SELECTED MOVEMENTS ({selectedExercises.length})</span>
+                </span>
+                <span className="text-[11px] font-semibold text-[#008B8E]">
+                  ~{calculateEstimatedDurationMin(selectedExercises)} mins
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* 5. Fluid Full-Height Exercise Selection List & Catalog */}
-      <div className="space-y-3 pt-1">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
-            EXERCISE SELECTION
-          </span>
-          <span className="text-[11px] font-semibold text-[#64748B]">
-            Tap + to add or remove
-          </span>
+              <div className="bg-white/85 border border-[#CBD5E1] rounded-2xl divide-y divide-[#E2E8F0] shadow-sm overflow-hidden backdrop-blur-md">
+                {selectedExercises.map((ex, idx) => (
+                  <div
+                    key={ex.id}
+                    className="flex items-center justify-between p-3 hover:bg-[#F8FAFC] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <span className="w-5 h-5 rounded-full bg-[#008B8E]/10 text-[#008B8E] text-[10px] font-bold font-mono-metric flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-[#0F172A] truncate">
+                          {ex.exerciseName}
+                        </h4>
+                        <span className="text-[11px] text-[#008B8E] font-semibold block capitalize">
+                          {ex.targetSets} sets × {ex.targetReps} reps • {ex.equipment}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedExercise(ex.id)}
+                      className="w-7 h-7 rounded-lg text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Remove from routine"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Right Column: Fluid Full-Height Exercise Selection List & Catalog */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
+                EXERCISE SELECTION
+              </span>
+              <span className="text-[11px] font-semibold text-[#64748B]">
+                Tap + to add or remove
+              </span>
+            </div>
 
         {/* Quick Muscle Selector Chips for Catalog */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar w-full">
@@ -561,6 +567,8 @@ export const CreateRoutineScreen: React.FC = () => {
           <Plus size={15} className="stroke-[3]" />
           <span>Add Custom Exercise to Routine</span>
         </button>
+      </div>
+      </div>
       </div>
     </div>
   );

@@ -131,7 +131,7 @@ export const SettingsScreen: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col px-4 pt-4 pb-28 space-y-5 animate-fade-in max-w-md mx-auto select-none">
+    <div className="flex flex-col space-y-5 animate-fade-in w-full select-none">
       {/* Hidden File Input for Backup Import */}
       <input
         ref={fileInputRef}
@@ -152,7 +152,7 @@ export const SettingsScreen: React.FC = () => {
         </button>
 
         <h1 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider">
-          SYSTEMATIC SETTINGS
+          SYSTEMATIC SETTINGS & BACKUP
         </h1>
 
         <div className="w-8" />
@@ -176,8 +176,10 @@ export const SettingsScreen: React.FC = () => {
         ))}
       </div>
 
-      {/* 1. TRAINING & UNITS SECTION */}
-      {(activeTab === 'all' || activeTab === 'training') && (
+      {/* Responsive Settings Grid */}
+      <div className={`grid ${activeTab === 'all' ? 'grid-cols-1 lg:grid-cols-2 gap-5' : 'grid-cols-1 gap-5'}`}>
+        {/* 1. TRAINING & UNITS SECTION */}
+        {(activeTab === 'all' || activeTab === 'training') && (
         <div className="space-y-2.5">
           <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1 flex items-center gap-1.5">
             <Scale size={14} className="text-[#008B8E]" />
@@ -439,6 +441,7 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Import Confirmation Modal */}
       {showImportConfirmModal && importSummary && (

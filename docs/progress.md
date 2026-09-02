@@ -7,8 +7,16 @@
 
 ---
 
-- **CURRENT STATUS**: PHASE 11 — COMPLETE EXERCISE LIBRARY + LOCAL DATA & BACKUP HARDENING (COMPLETED)
+- **CURRENT STATUS**: PHASE 11A — RESPONSIVE SYSTEM + VISUAL QA + CROSS-DEVICE POLISH (COMPLETED)
 - **COMPLETED**:
+  - Phase 11A: Responsive System + Visual QA + Cross-Device Polish
+    - Added `DesktopSidebar.tsx` navigation shell on screens ≥ 1024px (`hidden lg:flex`).
+    - Context-aware `BottomNav.tsx` visibility on `< 1024px` (`lg:hidden`).
+    - Responsive layout wrappers in `AppLayout.tsx` (`w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto`).
+    - Upgraded all primary views (Dashboard, Workouts, Exercises, History, Progress, Profile, Settings, Create Routine, Routine Preview) with responsive multi-column CSS grids (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`).
+    - Maintained zero horizontal overflow across 320px, 390px, 768px, 1024px, 1440px, and 1920px viewports.
+    - Verified complete production build (`npm run build`) with 0 errors.
+    - Documented in `/docs/responsive-system.md` and `/docs/visual-qa.md`.
   - Phase 11: Complete Exercise Library + Local Data & Backup Hardening
     - 159 canonical gym & strength exercises with zero fake records and zero duplicate IDs.
     - Full coverage across Chest, Back, Legs, Shoulders, Biceps, Triceps, Abs/Core, and Forearms.
@@ -21,9 +29,8 @@
     - Data reset protection and Zustand localStorage persistence (`gym_routines_store_v2`, `gym_history_store_v2`).
     - Clean removal of all experimental Firebase/Auth dependencies, routes, and dead code.
     - Comprehensive documentation created in `/docs/exercise-library.md`, `/docs/local-first-data.md`, `/docs/backup-restore.md`, and `/docs/roadmap.md`.
-  - Clean TypeScript compilation with 0 errors.
 - **IN PROGRESS**:
-  - Awaiting next instruction from user.
+  - Ready for next phase / user directives.
 
 ---
 
@@ -41,8 +48,9 @@
 - [x] **PHASE 9 — PROFILE & SETTINGS**
 - [x] **PHASE 10 — PWA + OFFLINE + SYNC HARDENING**
 - [x] **PHASE 11 — COMPLETE EXERCISE LIBRARY + LOCAL DATA & BACKUP HARDENING**
+- [x] **PHASE 11A — RESPONSIVE SYSTEM + VISUAL QA + CROSS-DEVICE POLISH**
 - [ ] **PHASE 12 — FEATURE COMPLETION / FINAL PRODUCT INTEGRATION**
-- [ ] **PHASE 13 — FINAL QA + RESPONSIVE + PRODUCTION AUDIT**
+- [ ] **PHASE 13 — FINAL QA + PRODUCTION AUDIT**
 
 ---
 

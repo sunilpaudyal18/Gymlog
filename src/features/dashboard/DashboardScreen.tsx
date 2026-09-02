@@ -17,18 +17,24 @@ export const DashboardScreen: React.FC = () => {
   const activeRoutine = getActiveRoutine() || routines[0] || null;
 
   return (
-    <div className="flex flex-col px-4 pt-6 pb-6 space-y-6 animate-fade-in">
+    <div className="flex flex-col space-y-6 animate-fade-in">
       {/* 1. Header (Greeting & Avatar) */}
       <DashboardHeader />
 
-      {/* 2. Today's Session Hero Card */}
-      <TodaySessionCard routine={activeRoutine} isCompletedToday={false} />
+      {/* 2. Responsive 2-Column Grid on Tablet/Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Primary Column: Hero Card & Weekly Progress */}
+        <div className="lg:col-span-7 space-y-6">
+          <TodaySessionCard routine={activeRoutine} isCompletedToday={false} />
+          <WeeklyProgress />
+        </div>
 
-      {/* 3. Weekly Progress Strip */}
-      <WeeklyProgress />
-
-      {/* 4. Quick Access Grid */}
-      <QuickAccessGrid />
+        {/* Right Secondary Column: Quick Access & Stats */}
+        <div className="lg:col-span-5 space-y-6">
+          <QuickAccessGrid />
+        </div>
+      </div>
     </div>
   );
 };
+
