@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .gemini
+
+# Local design resources (do not push)
+design/
+design/**
+
