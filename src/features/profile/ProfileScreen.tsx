@@ -13,6 +13,11 @@ import {
   Camera,
   Trash2,
   Flame,
+  Check,
+  Trophy,
+  Award,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 import { useHistoryStore } from '../../stores/useHistoryStore';
@@ -21,6 +26,7 @@ import {
   calculateWeeklyConsistency,
   calculatePersonalRecords,
 } from '../../utils/analyticsCalc';
+import { getCurrentWeekDays, isSameCalendarDay } from '../../utils/scheduler';
 import { compressProfileImage } from '../../utils/imageCompressor';
 import { SyncStatusModal } from './SyncStatusModal';
 import { TrainingUnitsModal } from './TrainingUnitsModal';
@@ -52,6 +58,7 @@ export const ProfileScreen: React.FC = () => {
   const stats = calculateOverallStats(completedSessions);
   const weeklyDays = calculateWeeklyConsistency(completedSessions);
   const personalRecords = calculatePersonalRecords(completedSessions);
+  const currentCalendarWeek = getCurrentWeekDays();
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -220,79 +227,216 @@ export const ProfileScreen: React.FC = () => {
         {/* Left Column: Progress Performance Overview */}
         <div className="lg:col-span-5 space-y-4">
           <div
-            onClick={() => setShowProgressModal(true)}
-            className="bg-white/80 border border-[#CBD5E1] hover:border-[#008B8E] rounded-3xl p-5 shadow-sm space-y-4 cursor-pointer transition-all duration-200 group relative backdrop-blur-md"
+            className="bg-white/85 border border-[#CBD5E1]/70 hover:border-[#008B8E]/50 rounded-3xl p-5 shadow-sm space-y-4 transition-all duration-200 group relative backdrop-blur-md select-none"
+            style={{
+              boxShadow: '0 8px 24px -4px rgba(15, 23, 42, 0.04), inset 0 1px 1px 0 rgba(255, 255, 255, 0.95)',
+            }}
           >
+            {/* Header with Telemetry Pill */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#008B8E]/10 text-[#008B8E] flex items-center justify-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-[#008B8E]/10 text-[#008B8E] flex items-center justify-center border border-[#008B8E]/20">
                   <TrendingUp size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#008B8E]">
+                      TELEMETRY
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F172A] tracking-tight group-hover:text-[#008B8E] transition-colors">
                     Progress & Performance
                   </h3>
-                  <p className="text-[11px] text-[#475569]">Tap for comprehensive deep-dive</p>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-[#94A3B8] group-hover:text-[#008B8E] group-hover:translate-x-0.5 transition-all" />
+
+              <button
+                type="button"
+                onClick={() => navigate('/progress')}
+                className="text-xs font-bold text-[#008B8E] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>Full Analytics</span>
+                <ChevronRight size={14} />
+              </button>
             </div>
 
-            {/* 3 Metric Pills */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-                <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
-                  WORKOUTS
+            {/* 4 Kinetic Metric Pills */}
+            <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+              {/* Volume */}
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1]/60 rounded-2xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    Volume
+                  </span>
+                  <span className="text-[9px] font-bold text-[#008B8E] bg-[#008B8E]/10 px-1.5 py-0.5 rounded-md">
+                    +14%
+                  </span>
+                </div>
+                <span className="font-mono-metric font-bold text-lg text-[#0F172A] mt-1 block">
+                  {(stats.totalVolumeKg || 0).toLocaleString()}
+                  <span className="text-xs font-semibold text-[#64748B] ml-1 font-sans">kg</span>
                 </span>
-                <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
-                  {stats.totalWorkouts}
-                </span>
-              </div>
-
-              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-                <span className="text-[10px] font-bold text-[#475569] uppercase block tracking-wider">
-                  VOLUME
-                </span>
-                <span className="font-mono-metric font-bold text-lg text-[#0F172A]">
-                  {stats.totalVolumeKg > 1000
-                    ? `${(stats.totalVolumeKg / 1000).toFixed(1)}k`
-                    : stats.totalVolumeKg}
-                  <span className="text-xs font-normal text-[#64748B] ml-0.5">kg</span>
+                <span className="text-[10px] text-[#64748B] block mt-0.5">
+                  Across {stats.totalWorkouts} sessions
                 </span>
               </div>
 
-              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-2xl p-2.5 text-center">
-                <span className="text-[10px] font-bold text-[#D96B27] uppercase block tracking-wider flex items-center justify-center gap-0.5">
-                  <Flame size={11} className="fill-[#D96B27]" />
-                  <span>THIS WEEK</span>
+              {/* Total Sets */}
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1]/60 rounded-2xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    Total Sets
+                  </span>
+                  <span className="text-[9px] font-bold text-[#D96B27] bg-[#D96B27]/10 px-1.5 py-0.5 rounded-md">
+                    Workload
+                  </span>
+                </div>
+                <span className="font-mono-metric font-bold text-lg text-[#0F172A] mt-1 block">
+                  {stats.totalSets}
+                  <span className="text-xs font-semibold text-[#64748B] ml-1 font-sans">sets</span>
                 </span>
-                <span className="font-mono-metric font-bold text-lg text-[#D96B27]">
+                <span className="text-[10px] text-[#64748B] block mt-0.5">
+                  {stats.totalDurationMin} min total
+                </span>
+              </div>
+
+              {/* This Week */}
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1]/60 rounded-2xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    This Week
+                  </span>
+                  <span className="text-[9px] font-bold text-[#008B8E] bg-[#008B8E]/10 px-1.5 py-0.5 rounded-md">
+                    Target
+                  </span>
+                </div>
+                <span className="font-mono-metric font-bold text-lg text-[#008B8E] mt-1 block">
                   {stats.thisWeekCount}
-                  <span className="text-xs font-normal text-[#D96B27]/70 ml-0.5">days</span>
+                  <span className="text-xs font-semibold text-[#64748B] ml-1 font-sans">/ 5 wk</span>
+                </span>
+                <span className="text-[10px] text-[#64748B] block mt-0.5">
+                  {stats.thisMonthCount} this month
+                </span>
+              </div>
+
+              {/* PRs Set */}
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1]/60 rounded-2xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    PR Records
+                  </span>
+                  <span className="text-[9px] font-bold text-[#D96B27] bg-[#D96B27]/10 px-1.5 py-0.5 rounded-md">
+                    Milestones
+                  </span>
+                </div>
+                <span className="font-mono-metric font-bold text-lg text-[#D96B27] mt-1 block">
+                  {personalRecords.length}
+                  <span className="text-xs font-semibold text-[#64748B] ml-1 font-sans">PRs</span>
+                </span>
+                <span className="text-[10px] text-[#64748B] block mt-0.5">
+                  Top verified lifts
                 </span>
               </div>
             </div>
 
-            {/* Mini Consistency Strip */}
-            <div className="flex items-center justify-between pt-1 border-t border-[#CBD5E1]/60">
-              <span className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
-                This Week's Activity
-              </span>
-              <div className="flex items-center gap-1.5">
-                {weeklyDays.map((d, i) => (
-                  <div
-                    key={i}
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold font-mono-metric transition-all ${
-                      d.hasWorkout
-                        ? 'bg-[#008B8E] text-white shadow-xs'
-                        : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#CBD5E1]'
-                    }`}
-                    title={`${d.dayName}: ${d.hasWorkout ? 'Workout completed' : 'Rest day'}`}
-                  >
-                    {d.short[0]}
-                  </div>
-                ))}
+            {/* 7-Day Consistency Bar with Electric Volt Today Highlight */}
+            <div className="space-y-2 pt-1 border-t border-[#CBD5E1]/60">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
+                  Weekly Consistency
+                </span>
+                <span className="text-[11px] font-bold text-[#008B8E]">
+                  {stats.thisWeekCount} completed
+                </span>
               </div>
+
+              <div className="grid grid-cols-7 gap-1.5 text-center relative">
+                {currentCalendarWeek.map((node, i) => {
+                  const hasSession = completedSessions.some((s) =>
+                    isSameCalendarDay(s.completedAt || s.startedAt, node.date)
+                  );
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <span
+                        className={`text-[10px] font-bold ${
+                          node.isToday ? 'text-[#008B8E]' : hasSession ? 'text-[#0F172A]' : 'text-[#64748B]'
+                        }`}
+                      >
+                        {node.dayLabel}
+                      </span>
+                      <div
+                        className={`relative w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                          hasSession
+                            ? 'bg-[#008B8E] text-white shadow-xs'
+                            : node.isToday
+                            ? 'border-2 border-[#008B8E] bg-white text-[#008B8E]'
+                            : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#CBD5E1]/60'
+                        }`}
+                      >
+                        {node.isToday && (
+                          <span className="absolute inset-0 rounded-xl border border-[#B4FF39] animate-ping opacity-40 pointer-events-none" />
+                        )}
+                        {hasSession ? (
+                          <Check size={12} className="stroke-[3] text-[#B4FF39]" />
+                        ) : node.isToday ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#008B8E]" />
+                        ) : (
+                          <span className="w-1 h-1 rounded-full bg-[#CBD5E1]" />
+                        )}
+                      </div>
+                      {node.isToday && (
+                        <div className="w-3 h-[1.5px] rounded-full bg-[#008B8E]" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Top PR Highlight Banner */}
+            {personalRecords.length > 0 && (
+              <div className="p-3 rounded-2xl bg-[#008B8E]/5 border border-[#008B8E]/20 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#D96B27]/15 text-[#D96B27] flex items-center justify-center shrink-0">
+                    <Trophy size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] block">
+                      Top Benchmark PR
+                    </span>
+                    <span className="text-xs font-bold text-[#0F172A] block truncate">
+                      {personalRecords[0].exerciseName}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-mono-metric font-bold text-[#D96B27] block">
+                    {personalRecords[0].value}
+                  </span>
+                  <span className="text-[9px] text-[#64748B]">Absolute Best</span>
+                </div>
+              </div>
+            )}
+
+            {/* Dual Action Buttons */}
+            <div className="pt-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowProgressModal(true)}
+                className="flex-1 py-2.5 rounded-xl bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] text-xs font-bold text-[#475569] hover:text-[#0F172A] transition-all cursor-pointer shadow-2xs"
+              >
+                Quick Preview
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/progress')}
+                className="flex-1 py-2.5 rounded-xl bg-[#008B8E] hover:bg-[#00A3A6] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <span>Analytics Page</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
           </div>
         </div>

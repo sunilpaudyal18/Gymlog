@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
+import { useHistoryStore } from '../../../stores/useHistoryStore';
+import { getCurrentWeekDays, isSameCalendarDay } from '../../../utils/scheduler';
 
 export interface DayProgress {
   day: 'M' | 'T' | 'W' | 'T' | 'F' | 'S' | 'S';
@@ -14,21 +16,33 @@ export interface WeeklyProgressProps {
   onDetailsClick?: () => void;
 }
 
-const DEFAULT_WEEK_DAYS: DayProgress[] = [
-  { day: 'M', completed: true },
-  { day: 'T', completed: true },
-  { day: 'W', completed: true, isToday: true },
-  { day: 'T', completed: false },
-  { day: 'F', completed: false },
-  { day: 'S', completed: false },
-  { day: 'S', completed: false },
-];
-
 export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
-  days = DEFAULT_WEEK_DAYS,
+  days: propDays,
   onDetailsClick,
 }) => {
   const navigate = useNavigate();
+  const { completedSessions } = useHistoryStore();
+
+  // Dynamically synchronize the 7 calendar days of current week
+  const weekDays = useMemo(() => {
+    if (propDays) return propDays;
+
+    const calendarNodes = getCurrentWeekDays();
+
+    return calendarNodes.map((node) => {
+      // Check if a completed session was logged on this exact calendar day
+      const isCompleted = completedSessions.some((session) =>
+        isSameCalendarDay(session.completedAt || session.startedAt, node.date)
+      );
+
+      return {
+        day: node.dayLabel,
+        completed: isCompleted,
+        isToday: node.isToday,
+        dateStr: node.dateStr,
+      };
+    });
+  }, [propDays, completedSessions]);
 
   const handleDetails = () => {
     if (onDetailsClick) {
@@ -73,7 +87,7 @@ export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
         <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent pointer-events-none" />
 
         {/* 3. Day Node States */}
-        {days.map((d, index) => {
+        {weekDays.map((d, index) => {
           const isCompleted = d.completed;
           const isToday = d.isToday;
 

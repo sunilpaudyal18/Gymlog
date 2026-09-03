@@ -85,13 +85,6 @@ export const DashboardHeader: React.FC = () => {
               />
             </span>
           </div>
-
-          {/* Motivational Subtitle / Metric Callout */}
-          <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider mt-1 flex items-center gap-1.5 truncate">
-            <span>PHASE 2</span>
-            <span className="w-1 h-1 rounded-full bg-[#CBD5E1]" />
-            <span>HYPERTROPHY WEEK 3</span>
-          </p>
         </div>
 
         {/* Right: Borderless, Extra-Clear & Enlarged Profile Photo */}

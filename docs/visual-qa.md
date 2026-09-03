@@ -2,7 +2,7 @@
 
 ## 1. Overview & Verification Summary
 
-This document records the visual quality assurance (Visual QA) and multi-breakpoint verification conducted across mobile, tablet, and desktop viewports for the **GYM (Kinetic Companion)** web application.
+This document records the visual quality assurance (Visual QA) and multi-breakpoint verification conducted across mobile, tablet, and desktop viewports for the **GYM** web application.
 
 ---
 

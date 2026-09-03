@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Routine, RoutineExercise } from '../types';
 import { PRESET_ROUTINES } from '../constants/routines';
 import { calculateEstimatedDurationMin } from '../utils/workoutCalc';
+import { DEFAULT_WEEKLY_SCHEDULE, getCurrentDayIndex } from '../utils/scheduler';
 
 interface RoutineState {
   routines: Routine[];
@@ -16,6 +17,11 @@ interface RoutineState {
   addExerciseToRoutine: (routineId: string, exercise: RoutineExercise) => void;
   updateRoutineExercise: (routineId: string, exerciseId: string, updated: Partial<RoutineExercise>) => void;
   removeExerciseFromRoutine: (routineId: string, exerciseId: string) => void;
+  weeklySchedule: Record<number, string | null>;
+  setDaySchedule: (dayOfWeek: number, routineId: string | null) => void;
+  getScheduledRoutineForDay: (dayOfWeek: number) => Routine | null;
+  getTodayScheduledRoutine: () => Routine | null;
+  swapTodayRoutine: (routineId: string | null) => void;
   getRoutineById: (id: string) => Routine | undefined;
   getActiveRoutine: () => Routine | undefined;
   resetToDefaults: () => void;
@@ -26,6 +32,7 @@ export const useRoutineStore = create<RoutineState>()(
     (set, get) => ({
       routines: PRESET_ROUTINES,
       activeRoutineId: 'chest-triceps-focus',
+      weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
 
   setActiveRoutineId: (id) =>
     set((state) => ({
@@ -159,9 +166,38 @@ export const useRoutineStore = create<RoutineState>()(
       }),
     })),
 
+  setDaySchedule: (dayOfWeek, routineId) =>
+    set((state) => ({
+      weeklySchedule: {
+        ...state.weeklySchedule,
+        [dayOfWeek]: routineId,
+      },
+    })),
+
+  swapTodayRoutine: (routineId) => {
+    const todayIndex = getCurrentDayIndex();
+    get().setDaySchedule(todayIndex, routineId);
+  },
+
+  getScheduledRoutineForDay: (dayOfWeek) => {
+    const { routines, weeklySchedule } = get();
+    const routineId = weeklySchedule[dayOfWeek];
+    if (!routineId) return null;
+    return routines.find((r) => r.id === routineId) || null;
+  },
+
+  getTodayScheduledRoutine: () => {
+    const todayIndex = getCurrentDayIndex();
+    return get().getScheduledRoutineForDay(todayIndex);
+  },
+
   getRoutineById: (id) => get().routines.find((r) => r.id === id),
 
   getActiveRoutine: () => {
+    // Check if there is a scheduled routine for today first
+    const todayRoutine = get().getTodayScheduledRoutine();
+    if (todayRoutine) return todayRoutine;
+
     const { routines, activeRoutineId } = get();
     return routines.find((r) => r.id === activeRoutineId) || routines[0];
   },
@@ -170,6 +206,7 @@ export const useRoutineStore = create<RoutineState>()(
     set({
       routines: PRESET_ROUTINES,
       activeRoutineId: 'chest-triceps-focus',
+      weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
     });
   },
 }),
@@ -178,6 +215,7 @@ export const useRoutineStore = create<RoutineState>()(
       partialize: (state) => ({
         routines: state.routines,
         activeRoutineId: state.activeRoutineId,
+        weeklySchedule: state.weeklySchedule,
       }),
     }
   )

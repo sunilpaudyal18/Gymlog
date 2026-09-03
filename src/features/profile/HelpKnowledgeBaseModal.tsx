@@ -39,9 +39,9 @@ export const HelpKnowledgeBaseModal: React.FC<HelpKnowledgeBaseModalProps> = ({
       id: 'philosophy',
       category: 'Philosophy',
       icon: Sparkles,
-      question: 'What is the Kinetic Gym Philosophy?',
+      question: 'What is the GYM Philosophy?',
       answer:
-        'Kinetic is built on the core principle: "Less typing. Less thinking. More training." The app prioritizes 1-tap interactions, automatic rest timers, intelligent plate rounding, and distraction-free logging so you can focus 100% of your energy on lifting.',
+        'GYM is built on the core principle: "Less typing. Less thinking. More training." The app prioritizes 1-tap interactions, automatic rest timers, intelligent plate rounding, and distraction-free logging so you can focus 100% of your energy on lifting.',
       bullets: [
         'Automatic weight pre-fills from previous session',
         'Hands-free audio chimes and haptic rest alerts',
@@ -189,7 +189,7 @@ export const HelpKnowledgeBaseModal: React.FC<HelpKnowledgeBaseModalProps> = ({
         {/* Support Footer Banner */}
         <div className="bg-[#F1F5F9] border border-[#CBD5E1] rounded-2xl p-4 text-center space-y-1.5 mt-2">
           <span className="text-xs font-bold text-[#0F172A] block">
-            Kinetic Engine • Version 1.0.0
+            GYM • Version 1.0.0
           </span>
           <p className="text-[11px] text-[#475569]">
             Designed for high-output strength athletes. Built for pure performance.

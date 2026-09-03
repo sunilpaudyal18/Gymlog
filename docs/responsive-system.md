@@ -2,7 +2,7 @@
 
 ## 1. Overview & Architectural Philosophy
 
-The **GYM (Kinetic Companion)** application follows a **Fluid Adaptive Architecture**:
+The **GYM** application follows a **Fluid Adaptive Architecture**:
 - **Mobile (< 640px)**: Focused, distraction-free workout companion with bottom floating glass navigation bar.
 - **Tablet (640px – 1023px)**: Spacious productivity layout with multi-column card grids and expanded metrics.
 - **Desktop (≥ 1024px)**: Complete fitness application workspace featuring a fixed, ergonomic navigation sidebar, 2-column analytics dashboards, and wide-span exercise discovery grids.
@@ -27,7 +27,7 @@ The **GYM (Kinetic Companion)** application follows a **Fluid Adaptive Architect
 - **Breakpoint**: Rendered on `lg:flex` (≥ 1024px).
 - **Positioning**: Sticky `top-0 h-screen w-64` with frosted glass backdrop (`bg-white/85 backdrop-blur-md`).
 - **Elements**:
-  - Kinetic Brand Crest (Volt & Teal badge with "GYM Kinetic Companion").
+  - Brand Crest (Volt & Teal badge with "GYM").
   - Primary navigation links with high-contrast active states.
   - Active Workout Banner: Real-time pulse indicator and 1-tap "Resume Session" CTA.
   - Local Storage Privacy badge ("100% Offline / Local Storage").

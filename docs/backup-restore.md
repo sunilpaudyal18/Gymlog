@@ -13,7 +13,7 @@ Backups are exported in format `gym-backup-YYYY-MM-DD.json`:
 {
   "version": 1,
   "exportedAt": 1756816000000,
-  "appName": "GYM - Kinetic Workout Companion",
+  "appName": "GYM",
   "profile": {
     "name": "Alex Johnson",
     "goal": "Hypertrophy",

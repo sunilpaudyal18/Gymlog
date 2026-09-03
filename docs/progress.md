@@ -1,8 +1,8 @@
 # GYM — Project Progress Tracker
 
 ## Project Summary
-- **App Name**: GYM (Kinetic Workout Companion)
-- **Design System**: Kinetic / Premium Electric Volt AMOLED Dark
+- **App Name**: GYM
+- **Design System**: Premium Electric Volt AMOLED Dark
 - **Target Viewport**: 390 × 844 (Mobile-First) with Responsive Tablet/Desktop Support
 
 ---

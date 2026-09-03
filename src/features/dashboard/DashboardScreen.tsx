@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { useRoutineStore } from '../../stores/useRoutineStore';
+import { useHistoryStore } from '../../stores/useHistoryStore';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TodaySessionCard } from './components/TodaySessionCard';
 import { WeeklyProgress } from './components/WeeklyProgress';
 import { QuickAccessGrid } from './components/QuickAccessGrid';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
+import { isSameCalendarDay } from '../../utils/scheduler';
 
 export const DashboardScreen: React.FC = () => {
-  const { getActiveRoutine, routines } = useRoutineStore();
+  const { getTodayScheduledRoutine } = useRoutineStore();
+  const { completedSessions } = useHistoryStore();
   const [isLoading] = useState(false);
 
   if (isLoading) {
     return <DashboardSkeleton />;
   }
 
-  const activeRoutine = getActiveRoutine() || routines[0] || null;
+  // Check if a workout has already been completed today
+  const isCompletedToday = completedSessions.some((s) =>
+    isSameCalendarDay(s.completedAt || s.startedAt, new Date())
+  );
+
+  // Dynamically load today's scheduled routine
+  const scheduledRoutine = getTodayScheduledRoutine();
 
   return (
     <div className="flex flex-col space-y-6 animate-fade-in">
@@ -25,7 +34,10 @@ export const DashboardScreen: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Primary Column: Hero Card & Weekly Progress */}
         <div className="lg:col-span-7 space-y-6">
-          <TodaySessionCard routine={activeRoutine} isCompletedToday={false} />
+          <TodaySessionCard
+            routine={scheduledRoutine}
+            isCompletedToday={isCompletedToday}
+          />
           <WeeklyProgress />
         </div>
 
@@ -37,4 +49,3 @@ export const DashboardScreen: React.FC = () => {
     </div>
   );
 };
-

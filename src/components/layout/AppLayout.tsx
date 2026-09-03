@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { BottomNav } from '../navigation/BottomNav';
 import { DesktopSidebar } from '../navigation/DesktopSidebar';
+import { MobileHeader } from '../navigation/MobileHeader';
 import { OfflineBanner } from '../feedback/OfflineBanner';
 
 export const AppLayout: React.FC = () => {
@@ -22,6 +23,9 @@ export const AppLayout: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
         {/* Offline Status Bar */}
         <OfflineBanner />
+
+        {/* Mobile Top Brand Header (< 1024px) */}
+        {!isWorkoutSessionMode && <MobileHeader />}
 
         {/* Main Viewport Container */}
         <main

@@ -1,7 +1,7 @@
 # GYM — Exercise Library Architecture & Repository Documentation
 
 ## 1. Overview
-The GYM (Kinetic Workout Companion) Exercise Library is a centralized, local-first, scalable repository providing canonical gym and strength-training movements across all major muscle groups and equipment categories.
+The GYM Exercise Library is a centralized, local-first, scalable repository providing canonical gym and strength-training movements across all major muscle groups and equipment categories.
 
 ---
 

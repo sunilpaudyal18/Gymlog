@@ -1,11 +1,12 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useWorkoutStore } from '../../stores/useWorkoutStore';
+import { useTodaySession } from '../../hooks/useTodaySession';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { activeSession } = useWorkoutStore();
+  const { activeSession, isRestDay, status } = useTodaySession();
+  const isLiveWorkout = status === 'in_progress' && activeSession && !isRestDay;
 
   const navItems = [
     {
@@ -122,7 +123,7 @@ export const BottomNav: React.FC = () => {
                 className="group relative flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all duration-200 cursor-pointer"
               >
                 {/* Active Session Ping Indicator on Workout tab */}
-                {item.path === '/workouts' && activeSession && (
+                {item.path === '/workouts' && isLiveWorkout && (
                   <span className="absolute top-0.5 right-1/4 w-2 h-2 rounded-full bg-[#008B8E] animate-ping" />
                 )}
 

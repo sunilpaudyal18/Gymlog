@@ -73,7 +73,7 @@ export const MuscleCategoryScreen: React.FC = () => {
         name: muscleId ? muscleId.charAt(0).toUpperCase() + muscleId.slice(1) : 'Exercises',
         count: 0,
         moniker: 'Masterclass',
-        legend: 'Kinetic Legend',
+        legend: 'Gym Legend',
         imageUrl: '/images/legends/arnold-chest.jpg',
       }
     );

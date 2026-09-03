@@ -45,7 +45,7 @@ export function exportBackupData(): void {
   const payload: GymBackupPayload = {
     version: DATA_SCHEMA_VERSION,
     exportedAt: Date.now(),
-    appName: 'GYM - Kinetic Workout Companion',
+    appName: 'GYM',
     profile: userState.profile,
     preferences: userState.preferences,
     routines: routineState.routines,

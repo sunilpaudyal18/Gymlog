@@ -73,3 +73,49 @@ input, textarea {
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
+
+/* Splash Screen Kinetic Animations */
+@keyframes kinetic-float {
+  0%, 100% {
+    transform: translateY(-6px);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+@keyframes kinetic-glow-pulse {
+  0%, 100% {
+    opacity: 0.16;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.32;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes kinetic-energy-streak {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.animate-kinetic-float {
+  animation: kinetic-float 2.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-kinetic-glow {
+  animation: kinetic-glow-pulse 2.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-energy-streak {
+  animation: kinetic-energy-streak 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
