@@ -1,8 +1,9 @@
 {
-  "name": "GYM",
-  "short_name": "GYM",
-  "description": "Premium athletic gym and workout tracking application with offline-first logging and rest timer.",
+  "name": "Gym Log",
+  "short_name": "Gym Log",
+  "description": "Precision athletic workout companion and strength log. 100% offline-ready, local privacy, zero accounts required.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#F4F6F9",
   "theme_color": "#0F172A",
@@ -44,6 +45,11 @@
       "name": "My Routines",
       "url": "/workouts",
       "description": "View and manage your routines"
+    },
+    {
+      "name": "Progress Telemetry",
+      "url": "/progress",
+      "description": "Analyze your training volume and PRs"
     }
   ]
 }

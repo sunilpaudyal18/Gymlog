@@ -22,6 +22,7 @@ const CORE_APP_SHELL = [
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
+  '/og-image.png',
 ];
 
 // Install Event: Pre-cache Core Application Shell
