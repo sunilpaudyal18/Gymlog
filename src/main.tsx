@@ -2,9 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/globals.css';
+import { getDatabase } from './services/database/db';
+
+// Initialize IndexedDB primary database on startup
+getDatabase().catch((err) => {
+  console.warn('[DB] IndexedDB initialization warning:', err);
+});
 
 // Register Service Worker for PWA & Offline reliability
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if ('serviceWorker' in navigator && (import.meta.env.PROD || process.env.NODE_ENV === 'production')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

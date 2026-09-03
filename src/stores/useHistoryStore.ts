@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { WorkoutSession, PersonalRecord } from '../types';
+import { indexedDbStorage } from '../services/database/indexedDbStorage';
 
 interface HistoryState {
   completedSessions: WorkoutSession[];
@@ -162,6 +163,7 @@ export const useHistoryStore = create<HistoryState>()(
     }),
     {
       name: 'gym_history_store_v2',
+      storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
         completedSessions: state.completedSessions,
         personalRecords: state.personalRecords,

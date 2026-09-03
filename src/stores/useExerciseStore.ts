@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Exercise, MuscleGroup, Equipment } from '../types';
 import { PRESET_EXERCISES } from '../constants/exercises';
+import { indexedDbStorage } from '../services/database/indexedDbStorage';
 
 export interface EquipmentCategoryInfo {
   id: Equipment | 'all';
@@ -256,6 +257,7 @@ export const useExerciseStore = create<ExerciseState>()(
     }),
     {
       name: 'gym_exercise_library_store_v2',
+      storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
         exercises: state.exercises,
         favorites: state.favorites,

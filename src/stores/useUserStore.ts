@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile } from '../types';
+import { indexedDbStorage } from '../services/database/indexedDbStorage';
 
 export interface UserPreferences {
   weightUnit: 'kg' | 'lb';
@@ -158,6 +159,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'gym_user_preferences_store',
+      storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
         profile: state.profile,
         preferences: state.preferences,

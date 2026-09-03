@@ -4,6 +4,7 @@ import { BottomNav } from '../navigation/BottomNav';
 import { DesktopSidebar } from '../navigation/DesktopSidebar';
 import { MobileHeader } from '../navigation/MobileHeader';
 import { OfflineBanner } from '../feedback/OfflineBanner';
+import { CrashRecoveryNotification } from '../feedback/CrashRecoveryNotification';
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
@@ -23,6 +24,9 @@ export const AppLayout: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
         {/* Offline Status Bar */}
         <OfflineBanner />
+
+        {/* Crash Recovery Notification Toast */}
+        <CrashRecoveryNotification />
 
         {/* Mobile Top Brand Header (< 1024px) */}
         {!isWorkoutSessionMode && <MobileHeader />}
@@ -48,4 +52,3 @@ export const AppLayout: React.FC = () => {
     </div>
   );
 };
-

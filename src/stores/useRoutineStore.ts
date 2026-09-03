@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Routine, RoutineExercise } from '../types';
 import { PRESET_ROUTINES } from '../constants/routines';
+import { indexedDbStorage } from '../services/database/indexedDbStorage';
 import { calculateEstimatedDurationMin } from '../utils/workoutCalc';
 import { DEFAULT_WEEKLY_SCHEDULE, getCurrentDayIndex } from '../utils/scheduler';
 
@@ -212,6 +213,7 @@ export const useRoutineStore = create<RoutineState>()(
 }),
     {
       name: 'gym_routines_store_v2',
+      storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
         routines: state.routines,
         activeRoutineId: state.activeRoutineId,

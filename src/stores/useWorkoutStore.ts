@@ -1,7 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { WorkoutSession, WorkoutExerciseSession, WorkoutSet, Routine } from '../types';
 import { soundFX } from '../utils/audio';
+import { indexedDbStorage } from '../services/database/indexedDbStorage';
+import { workoutRepository } from '../services/database/repositories/workoutRepository';
 
 export type RestTimerState = 'idle' | 'running' | 'paused' | 'completed' | 'skipped';
 
@@ -138,6 +140,11 @@ export const useWorkoutStore = create<WorkoutState>()(
           showRestModal: false,
           timerIntervalId: null,
         });
+
+        // Persist immediately to IndexedDB for crash recovery
+        workoutRepository.saveActiveSession(newSession).catch((err) => {
+          console.warn('[WorkoutStore] Failed to save start session to IndexedDB:', err);
+        });
       },
 
       loadActiveSessionFromRoutineId: (routineId, routines, historySessions) => {
@@ -172,11 +179,18 @@ export const useWorkoutStore = create<WorkoutState>()(
           sets,
         };
 
+        const updatedSession = {
+          ...activeSession,
+          exercises,
+        };
+
         set({
-          activeSession: {
-            ...activeSession,
-            exercises,
-          },
+          activeSession: updatedSession,
+        });
+
+        // Persist immediate set edits to IndexedDB
+        workoutRepository.saveActiveSession(updatedSession).catch((err) => {
+          console.warn('[WorkoutStore] Failed to save set edit to IndexedDB:', err);
         });
       },
 
@@ -223,14 +237,21 @@ export const useWorkoutStore = create<WorkoutState>()(
         const nextSetIdx = activeSetIndex + 1;
         const isExerciseFinished = nextSetIdx >= currentEx.sets.length;
 
+        const updatedSession = {
+          ...activeSession,
+          exercises: updatedExercises,
+          totalVolumeKg: totalVolume,
+          totalSetsCompleted: totalSets,
+        };
+
         set({
-          activeSession: {
-            ...activeSession,
-            exercises: updatedExercises,
-            totalVolumeKg: totalVolume,
-            totalSetsCompleted: totalSets,
-          },
+          activeSession: updatedSession,
           activeSetIndex: isExerciseFinished ? activeSetIndex : nextSetIdx,
+        });
+
+        // Immediately persist completed set to IndexedDB
+        workoutRepository.saveActiveSession(updatedSession).catch((err) => {
+          console.warn('[WorkoutStore] Failed to save logged set to IndexedDB:', err);
         });
 
         // Automatically start timestamp-based rest timer
@@ -451,6 +472,10 @@ export const useWorkoutStore = create<WorkoutState>()(
           isPaused: false,
         });
 
+        // Clear active session from IndexedDB
+        workoutRepository.clearActiveSession().catch(console.warn);
+        workoutRepository.saveCompletedWorkout(completedSession).catch(console.warn);
+
         return completedSession;
       },
 
@@ -468,10 +493,14 @@ export const useWorkoutStore = create<WorkoutState>()(
           showRestModal: false,
           isPaused: false,
         });
+
+        // Clear active session from IndexedDB
+        workoutRepository.clearActiveSession().catch(console.warn);
       },
     }),
     {
       name: 'gym_active_workout_store',
+      storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
         activeSession: state.activeSession,
         currentExerciseIndex: state.currentExerciseIndex,
