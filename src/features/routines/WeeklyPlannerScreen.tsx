@@ -15,14 +15,11 @@ import {
   Check,
   Layers,
   ArrowRight,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { useRoutineStore } from '../../stores/useRoutineStore';
 import { useWorkoutStore } from '../../stores/useWorkoutStore';
 import { Routine, RoutineExercise } from '../../types';
-import { DayEditorDrawer } from '../routines/components/DayEditorDrawer';
-import { RoutineCard } from './components/RoutineCard';
+import { DayEditorDrawer } from './components/DayEditorDrawer';
 import { DAY_NAMES, getCurrentDayIndex, REST_DAY_INFO } from '../../utils/scheduler';
 
 interface DayConfig {
@@ -33,7 +30,7 @@ interface DayConfig {
   isRest: boolean;
 }
 
-export const WorkoutsScreen: React.FC = () => {
+export const WeeklyPlannerScreen: React.FC = () => {
   const navigate = useNavigate();
   const {
     routines,
@@ -43,24 +40,21 @@ export const WorkoutsScreen: React.FC = () => {
     getScheduledRoutineForDay,
     setDaySchedule,
     resetToDefaults,
-    duplicateRoutine,
-    deleteRoutine,
   } = useRoutineStore();
 
   const { startWorkoutFromRoutine } = useWorkoutStore();
 
-  // Day Editor Modal State (Centered dialog)
+  // Drawer Editor State
   const [editorOpen, setEditorOpen] = useState(false);
   const [activeEditingDay, setActiveEditingDay] = useState<number>(0);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [localTitle, setLocalTitle] = useState(splitName || 'Routine Planner: 4-Day Split');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [justSavedNotification, setJustSavedNotification] = useState(false);
-  const [showSavedTemplates, setShowSavedTemplates] = useState(false);
 
   const todayIndex = getCurrentDayIndex();
 
-  // Map 7 days of week: Sunday (0) through Saturday (6)
+  // Map 7 days of week: Sunday (0) to Saturday (6)
   const days: DayConfig[] = useMemo(() => {
     return [0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
       const routine = getScheduledRoutineForDay(dayIndex);
@@ -85,13 +79,13 @@ export const WorkoutsScreen: React.FC = () => {
     return { trainingDaysCount, restDaysCount, totalExercises };
   }, [days]);
 
-  // Open Centered Day Editor for a specific day
+  // Open Drawer for a specific day
   const handleOpenDayEditor = (dayIndex: number) => {
     setActiveEditingDay(dayIndex);
     setEditorOpen(true);
   };
 
-  // Launch Workout Mode
+  // One-tap launch workout mode
   const handleStartWorkout = (routine: Routine) => {
     startWorkoutFromRoutine(routine);
     navigate('/workout-mode');
@@ -115,6 +109,7 @@ export const WorkoutsScreen: React.FC = () => {
   // Preset split templates quick-apply
   const applyPresetSplit = (type: 'ppl' | 'upper_lower' | 'full_body' | 'bro_split') => {
     if (type === 'ppl') {
+      // Mon: Push, Tue: Pull, Wed: Legs, Thu: Rest, Fri: Push, Sat: Pull, Sun: Rest
       setDaySchedule(0, null);
       setDaySchedule(1, 'push-day-workout');
       setDaySchedule(2, 'pull-day-focus');
@@ -122,8 +117,9 @@ export const WorkoutsScreen: React.FC = () => {
       setDaySchedule(4, null);
       setDaySchedule(5, 'push-day-workout');
       setDaySchedule(6, 'pull-day-focus');
-      setSplitName('Push / Pull / Legs Split');
+      setSplitName('Routine Planner: Push / Pull / Legs Split');
     } else if (type === 'upper_lower') {
+      // Mon: Upper, Tue: Lower, Wed: Rest, Thu: Upper, Fri: Lower, Sat & Sun: Rest
       setDaySchedule(0, null);
       setDaySchedule(1, 'chest-triceps-focus');
       setDaySchedule(2, 'leg-destroyer');
@@ -131,8 +127,9 @@ export const WorkoutsScreen: React.FC = () => {
       setDaySchedule(4, 'pull-day-focus');
       setDaySchedule(5, 'leg-destroyer');
       setDaySchedule(6, null);
-      setSplitName('4-Day Upper / Lower Split');
+      setSplitName('Routine Planner: 4-Day Upper / Lower Split');
     } else if (type === 'full_body') {
+      // Mon, Wed, Fri: Full Body; Sun, Tue, Thu, Sat: Rest
       setDaySchedule(0, null);
       setDaySchedule(1, 'chest-triceps-focus');
       setDaySchedule(2, null);
@@ -140,7 +137,7 @@ export const WorkoutsScreen: React.FC = () => {
       setDaySchedule(4, null);
       setDaySchedule(5, 'leg-destroyer');
       setDaySchedule(6, null);
-      setSplitName('3-Day Full Body Classic');
+      setSplitName('Routine Planner: 3-Day Full Body Split');
     } else {
       resetToDefaults();
       setSplitName('Routine Planner: 4-Day Split');
@@ -151,16 +148,17 @@ export const WorkoutsScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col space-y-6 select-none animate-fade-in pb-12">
-      {/* 1. Single Authoritative Header Section */}
+      {/* 1. Header & Top Bar with Offline Persistence Badge */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Title & Editable Split Name */}
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#00A3A6] bg-[#00A3A6]/10 px-2.5 py-0.5 rounded-full border border-[#00A3A6]/20 inline-flex items-center gap-1.5">
               <Calendar size={11} className="stroke-[2.5]" />
-              ROUTINE HUB
+              AETHERIC QUARTZ SYSTEM
             </span>
 
+            {/* Quick Today indicator pill */}
             <span className="text-[10px] font-bold text-[#64748B] bg-white/80 px-2 py-0.5 rounded-full border border-[#CBD5E1]/60">
               Today: {DAY_NAMES[todayIndex]}
             </span>
@@ -190,7 +188,7 @@ export const WorkoutsScreen: React.FC = () => {
               <div
                 onClick={() => setIsEditingTitle(true)}
                 className="flex items-center gap-2.5 cursor-pointer py-0.5"
-                title="Click to rename routine split"
+                title="Click to rename split"
               >
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight hover:text-[#00A3A6] transition-colors">
                   {splitName || 'Routine Planner: 4-Day Split'}
@@ -204,13 +202,13 @@ export const WorkoutsScreen: React.FC = () => {
           </div>
 
           <p className="text-xs sm:text-sm text-[#475569] font-medium">
-            Manage your weekly schedule, customize movements, and perform routines offline
+            Customize your 7-day training schedule with instant offline caching
           </p>
         </div>
 
-        {/* Primary Action Controls */}
+        {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5 sm:self-start md:self-auto shrink-0">
-          {/* Direct + New Routine Button (opens centered editor for today) */}
+          {/* New Routine Quick Add Button */}
           <button
             type="button"
             onClick={() => handleOpenDayEditor(todayIndex)}
@@ -258,7 +256,7 @@ export const WorkoutsScreen: React.FC = () => {
         </div>
 
         <div className="text-[11px] text-[#64748B] font-semibold flex items-center gap-1.5">
-          <span>Tap "Edit Day" on any card to customize movements</span>
+          <span>Tap any day card to edit movements or adjust sets</span>
           <ArrowRight size={12} className="text-[#00A3A6]" />
         </div>
       </div>
@@ -390,7 +388,7 @@ export const WorkoutsScreen: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Scrollable list of assigned exercises with exact set/rep counters */}
+                    {/* Scrollable list of assigned exercises with set/rep counters */}
                     <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 no-scrollbar pt-1">
                       {routine.exercises.map((ex, idx) => (
                         <div
@@ -455,56 +453,7 @@ export const WorkoutsScreen: React.FC = () => {
         })}
       </div>
 
-      {/* 4. Unified Saved Routine Templates Drawer/Section */}
-      <div className="pt-4 border-t border-[#CBD5E1]/60">
-        <button
-          type="button"
-          onClick={() => setShowSavedTemplates(!showSavedTemplates)}
-          className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/80 border border-[#CBD5E1] hover:border-[#00A3A6]/50 transition-all cursor-pointer shadow-xs"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#00A3A6]/10 text-[#00A3A6] flex items-center justify-center">
-              <Layers size={16} />
-            </div>
-            <div className="text-left">
-              <span className="text-sm font-bold text-[#0F172A] block">
-                Saved Routine Templates ({routines.length})
-              </span>
-              <span className="text-[11px] text-[#64748B]">
-                View or duplicate pre-built full workout templates
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#00A3A6]">
-              {showSavedTemplates ? 'Hide Templates' : 'View Templates'}
-            </span>
-            {showSavedTemplates ? (
-              <ChevronUp size={16} className="text-[#00A3A6]" />
-            ) : (
-              <ChevronDown size={16} className="text-[#00A3A6]" />
-            )}
-          </div>
-        </button>
-
-        {showSavedTemplates && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-4 animate-fade-in">
-            {routines.map((routine) => (
-              <RoutineCard
-                key={routine.id}
-                routine={routine}
-                onStart={handleStartWorkout}
-                onEdit={(routineId) => navigate(`/routine-preview/${routineId}`)}
-                onDuplicate={(r) => duplicateRoutine(r)}
-                onDelete={(id) => deleteRoutine(id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 5. Centered Modal Day Editor Dialog */}
+      {/* 4. Slide-Over Panel Editor (Right Side) */}
       <DayEditorDrawer
         isOpen={editorOpen}
         dayIndex={activeEditingDay}
@@ -513,7 +462,7 @@ export const WorkoutsScreen: React.FC = () => {
         onSaved={triggerSavedFeedback}
       />
 
-      {/* 6. Preset Split Templates Modal */}
+      {/* 5. Preset Split Templates Modal */}
       {templateModalOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
           <div
@@ -536,7 +485,7 @@ export const WorkoutsScreen: React.FC = () => {
                   Choose Split Template
                 </h3>
                 <p className="text-xs text-[#94A3B8]">
-                  Instantly configure your 7-day schedule with proven athletic splits.
+                  Instantly configure your 7-day schedule with proven bodybuilding splits.
                 </p>
               </div>
               <button

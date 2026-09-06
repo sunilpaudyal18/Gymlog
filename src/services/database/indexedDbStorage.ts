@@ -22,24 +22,22 @@ export const indexedDbStorage: StateStorage = {
       // 1. Attempt to fetch from IndexedDB
       const value = await kvGet<string>(name);
       if (value !== null && value !== undefined) {
+        // Keep localStorage mirrored for synchronous offline resilience
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem(name, value);
+          }
+        } catch (_) {}
         return value;
       }
 
-      // 2. One-Time Legacy Migration from localStorage
+      // 2. Read from localStorage fallback
       if (typeof window !== 'undefined' && window.localStorage) {
         const legacyValue = localStorage.getItem(name);
         if (legacyValue) {
-          try {
-            // Write legacy data directly into IndexedDB
-            await kvSet(name, legacyValue);
-            // Clean up localStorage to prevent double source of truth
-            localStorage.removeItem(name);
-            console.info(`[GYM DB] Successfully migrated "${name}" from localStorage to IndexedDB.`);
-            return legacyValue;
-          } catch (migrateErr) {
-            console.warn(`[GYM DB] Migration write error for "${name}":`, migrateErr);
-            return legacyValue;
-          }
+          // Asynchronously ensure it is written to IndexedDB
+          kvSet(name, legacyValue).catch(() => {});
+          return legacyValue;
         }
       }
 
@@ -55,21 +53,22 @@ export const indexedDbStorage: StateStorage = {
   },
 
   setItem: async (name: string, value: string): Promise<void> => {
+    // 1. Mirror write to localStorage for instant synchronous offline availability
     try {
-      // Primary persistence to IndexedDB
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(name, value);
+      }
+    } catch (lsErr) {
+      console.warn(`[GYM DB] LocalStorage write error for "${name}":`, lsErr);
+    }
+
+    // 2. Primary asynchronous persistence to IndexedDB
+    try {
       await kvSet(name, value);
       memoryFallback.set(name, value);
     } catch (err) {
       console.error(`[GYM DB] Error writing "${name}" to IndexedDB:`, err);
       memoryFallback.set(name, value);
-      // Secondary fallback
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem(name, value);
-        }
-      } catch (lsErr) {
-        console.warn(`[GYM DB] LocalStorage fallback write failed:`, lsErr);
-      }
     }
   },
 

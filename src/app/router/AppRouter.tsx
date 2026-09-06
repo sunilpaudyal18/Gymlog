@@ -23,6 +23,8 @@ export const AppRouter: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardScreen />} />
           <Route path="/workouts" element={<WorkoutsScreen />} />
+          <Route path="/weekly-planner" element={<Navigate to="/workouts" replace />} />
+          <Route path="/routine-planner" element={<Navigate to="/workouts" replace />} />
           <Route path="/create-routine" element={<CreateRoutineScreen />} />
           <Route path="/create-routine/:id" element={<CreateRoutineScreen />} />
           <Route path="/edit-routine/:id" element={<CreateRoutineScreen />} />

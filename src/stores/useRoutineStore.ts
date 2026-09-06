@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Routine, RoutineExercise } from '../types';
+import { Routine, RoutineExercise, MuscleGroup } from '../types';
 import { PRESET_ROUTINES } from '../constants/routines';
 import { indexedDbStorage } from '../services/database/indexedDbStorage';
 import { calculateEstimatedDurationMin } from '../utils/workoutCalc';
@@ -20,6 +20,13 @@ interface RoutineState {
   removeExerciseFromRoutine: (routineId: string, exerciseId: string) => void;
   weeklySchedule: Record<number, string | null>;
   setDaySchedule: (dayOfWeek: number, routineId: string | null) => void;
+  splitName: string;
+  setSplitName: (name: string) => void;
+  setDayCustomRoutine: (
+    dayOfWeek: number,
+    data: { name: string; targetMuscles: MuscleGroup[]; exercises: RoutineExercise[] }
+  ) => Routine;
+  setDayRest: (dayOfWeek: number) => void;
   getScheduledRoutineForDay: (dayOfWeek: number) => Routine | null;
   getTodayScheduledRoutine: () => Routine | null;
   swapTodayRoutine: (routineId: string | null) => void;
@@ -34,6 +41,56 @@ export const useRoutineStore = create<RoutineState>()(
       routines: PRESET_ROUTINES,
       activeRoutineId: 'chest-triceps-focus',
       weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
+      splitName: 'Routine Planner: 4-Day Split',
+
+      setSplitName: (name) => set({ splitName: name }),
+
+      setDayRest: (dayOfWeek) => {
+        get().setDaySchedule(dayOfWeek, null);
+      },
+
+      setDayCustomRoutine: (dayOfWeek, data) => {
+        const { routines, weeklySchedule } = get();
+        const existingRoutineId = weeklySchedule[dayOfWeek];
+        const estimatedMin = calculateEstimatedDurationMin(data.exercises);
+
+        if (existingRoutineId && routines.some((r) => r.id === existingRoutineId)) {
+          // Update the existing routine
+          const updatedRoutine: Routine = {
+            ...routines.find((r) => r.id === existingRoutineId)!,
+            name: data.name,
+            targetMuscles: data.targetMuscles,
+            exercises: data.exercises,
+            estimatedDurationMin: estimatedMin,
+            updatedAt: Date.now(),
+          };
+          set((state) => ({
+            routines: state.routines.map((r) => (r.id === existingRoutineId ? updatedRoutine : r)),
+          }));
+          return updatedRoutine;
+        } else {
+          // Create a brand new custom routine and assign it to this day
+          const newId = `routine-day-${dayOfWeek}-${Date.now()}`;
+          const newRoutine: Routine = {
+            id: newId,
+            name: data.name,
+            targetMuscles: data.targetMuscles,
+            exercises: data.exercises,
+            estimatedDurationMin: estimatedMin,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            lastPerformed: 'Not performed yet',
+          };
+          set((state) => ({
+            routines: [newRoutine, ...state.routines],
+            weeklySchedule: {
+              ...state.weeklySchedule,
+              [dayOfWeek]: newId,
+            },
+          }));
+          return newRoutine;
+        }
+      },
 
   setActiveRoutineId: (id) =>
     set((state) => ({
@@ -208,6 +265,7 @@ export const useRoutineStore = create<RoutineState>()(
       routines: PRESET_ROUTINES,
       activeRoutineId: 'chest-triceps-focus',
       weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
+      splitName: 'Routine Planner: 4-Day Split',
     });
   },
 }),
@@ -218,6 +276,7 @@ export const useRoutineStore = create<RoutineState>()(
         routines: state.routines,
         activeRoutineId: state.activeRoutineId,
         weeklySchedule: state.weeklySchedule,
+        splitName: state.splitName,
       }),
     }
   )

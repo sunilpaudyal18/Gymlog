@@ -59,13 +59,23 @@ export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
         <h3 className="text-base font-bold text-[#0F172A] tracking-tight">
           Weekly Progress
         </h3>
-        <button
-          type="button"
-          onClick={handleDetails}
-          className="text-xs font-bold text-[#008B8E] hover:underline hover:brightness-110 cursor-pointer tracking-tight transition-all"
-        >
-          Details
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/workouts')}
+            className="text-xs font-bold text-[#008B8E] hover:underline hover:brightness-110 cursor-pointer tracking-tight transition-all"
+          >
+            Routines
+          </button>
+          <span className="text-[#CBD5E1] text-xs">•</span>
+          <button
+            type="button"
+            onClick={handleDetails}
+            className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] cursor-pointer tracking-tight transition-all"
+          >
+            Details
+          </button>
+        </div>
       </div>
 
       {/* 2. Glass Strip Container */}

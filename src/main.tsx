@@ -10,15 +10,15 @@ getDatabase().catch((err) => {
 });
 
 // Register Service Worker for PWA & Offline reliability
-if ('serviceWorker' in navigator && (import.meta.env.PROD || process.env.NODE_ENV === 'production')) {
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        console.log('[PWA] Service Worker registered:', reg.scope);
+        console.log('[PWA] Service Worker active:', reg.scope);
       })
       .catch((err) => {
-        console.warn('[PWA] Service Worker registration failed:', err);
+        console.warn('[PWA] Service Worker registration warning:', err);
       });
   });
 }

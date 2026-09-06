@@ -1,15 +1,17 @@
 /**
  * GYM PWA - Production Offline Service Worker
- * Version: gym-kinetic-cache-v2
+ * Version: gym-kinetic-cache-v3
  *
- * Pre-caches application shell (HTML, JavaScript bundles, CSS, SVGs, fonts, icons).
- * Provides offline navigation fallback to cached SPA shell.
- * NEVER stores or touches dynamic workout/user data (handled strictly by IndexedDB).
+ * Guaranteed offline support for PWA installation:
+ * - Pre-caches core application shell & static resources
+ * - Intercepts all SPA navigation requests and falls back to cached index.html
+ * - Cache-first strategy for static assets (JS, CSS, images, icons, fonts)
+ * - Keeps user workout/routine data strictly in local device storage (IndexedDB + localStorage)
  */
 
-const CACHE_NAME = 'gym-kinetic-cache-v2';
+const CACHE_NAME = 'gym-kinetic-cache-v3';
 
-// Core static assets required for cold startup offline
+// Core static assets required for cold offline startup
 const CORE_APP_SHELL = [
   '/',
   '/index.html',
@@ -28,16 +30,21 @@ const CORE_APP_SHELL = [
 // Install Event: Pre-cache Core Application Shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(CORE_APP_SHELL).catch((err) => {
-        console.warn('[SW] Some non-critical assets failed to pre-cache:', err);
-      });
-    })
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        console.log('[SW] Pre-caching core application shell...');
+        return cache.addAll(CORE_APP_SHELL);
+      })
+      .catch((err) => {
+        console.warn('[SW] Non-critical asset pre-caching warning:', err);
+      })
   );
+  // Activate immediately without waiting
   self.skipWaiting();
 });
 
-// Activate Event: Purge Obsolete Caches (Never touches IndexedDB or user databases)
+// Activate Event: Purge Obsolete Caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -54,46 +61,72 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event: Network-First with Cache-Fallback for Navigation, Stale-While-Revalidate for Assets
+// Fetch Event: Offline-first navigation & static asset handling
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignore non-GET requests, chrome-extension schemes, and non-HTTP requests
+  // Ignore non-GET requests and non-HTTP/HTTPS schemes
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
     return;
   }
 
-  // 1. Navigation Requests (SPA Routes: /, /workouts, /progress, /exercises, etc.)
+  // 1. SPA Navigation Requests (e.g. /, /workouts, /exercises, /history, /progress, /profile)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/index.html', copy);
+            });
           }
           return networkResponse;
         })
         .catch(async () => {
-          // Guaranteed offline fallback to cached SPA application shell
+          // Offline fallback: Return cached index.html so React Router renders the page offline
           const cached = await caches.match('/index.html');
           if (cached) return cached;
+
           const rootCached = await caches.match('/');
           if (rootCached) return rootCached;
-          return new Response('Offline - App Shell loading...', {
-            headers: { 'Content-Type': 'text/html' },
-          });
+
+          return new Response(
+            '<!doctype html><html><head><meta charset="utf-8"><title>Gym Log</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div></body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+          );
         })
     );
     return;
   }
 
-  // 2. Static Assets (JS bundles, CSS, Fonts, Images, SVGs)
-  // Stale-While-Revalidate: Return cache immediately, update in background
+  // 2. Static Assets (JS bundles, CSS files, Images, SVGs, Fonts)
+  // Cache-First for assets with background revalidation when online
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
+    caches.match(request, { ignoreSearch: false }).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Return cached asset immediately for 0-latency offline speed
+        // Revalidate in background if online
+        if (navigator.onLine) {
+          fetch(request)
+            .then((networkResponse) => {
+              if (
+                networkResponse &&
+                networkResponse.status === 200 &&
+                (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+              ) {
+                const copy = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+              }
+            })
+            .catch(() => {});
+        }
+        return cachedResponse;
+      }
+
+      // If not in cache, fetch from network and store in cache
+      return fetch(request)
         .then((networkResponse) => {
           if (
             networkResponse &&
@@ -108,11 +141,9 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If network failed and we have no cached response, fallback gracefully
-          return cachedResponse || new Response('', { status: 503, statusText: 'Offline' });
+          // Graceful fallback if offline and not in cache
+          return new Response('', { status: 503, statusText: 'Offline Asset Unavailable' });
         });
-
-      return cachedResponse || fetchPromise;
     })
   );
 });
