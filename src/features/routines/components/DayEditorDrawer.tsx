@@ -6,7 +6,6 @@ import {
   Plus,
   Trash2,
   Dumbbell,
-  Sparkles,
   Coffee,
   CheckCircle2,
   Filter,
@@ -36,85 +35,6 @@ const MUSCLE_PILLS: { id: MuscleGroup; label: string }[] = [
   { id: 'forearms', label: 'Forearms' },
 ];
 
-interface QuickTemplate {
-  name: string;
-  badge: string;
-  muscles: MuscleGroup[];
-  defaultExerciseNames: string[];
-}
-
-const DAY_TEMPLATES: QuickTemplate[] = [
-  {
-    name: 'Chest + Triceps (Push Focus)',
-    badge: 'Push',
-    muscles: ['chest', 'triceps'],
-    defaultExerciseNames: [
-      'Bench Press',
-      'Incline Dumbbell Press',
-      'Cable Fly',
-      'Rope Pushdown',
-      'Dips',
-    ],
-  },
-  {
-    name: 'Back + Biceps (Pull Focus)',
-    badge: 'Pull',
-    muscles: ['back', 'biceps'],
-    defaultExerciseNames: [
-      'Barbell Deadlift',
-      'Barbell Row',
-      'Lat Pulldown',
-      'Incline Dumbbell Curl',
-      'Face Pull',
-    ],
-  },
-  {
-    name: 'Legs & Calves (Lower Focus)',
-    badge: 'Legs',
-    muscles: ['legs', 'glutes'],
-    defaultExerciseNames: [
-      'Barbell Back Squat',
-      'Romanian Deadlift',
-      'Leg Press',
-      'Standing Calf Raise',
-      'Walking Lunges',
-    ],
-  },
-  {
-    name: 'Shoulders & Arms Hypertrophy',
-    badge: 'Arms',
-    muscles: ['shoulders', 'biceps', 'triceps'],
-    defaultExerciseNames: [
-      'Overhead Press',
-      'Lateral Raise',
-      'Barbell Curl',
-      'Overhead Tricep Extension',
-    ],
-  },
-  {
-    name: 'Full Body Classic Stimulus',
-    badge: 'Full Body',
-    muscles: ['chest', 'back', 'legs'],
-    defaultExerciseNames: [
-      'Barbell Back Squat',
-      'Bench Press',
-      'Barbell Row',
-      'Overhead Press',
-    ],
-  },
-  {
-    name: 'Core & Abdominal Conditioning',
-    badge: 'Core',
-    muscles: ['abs'],
-    defaultExerciseNames: [
-      'Hanging Leg Raise',
-      'Cable Crunch',
-      'Plank Hold',
-      'Ab Wheel Rollout',
-    ],
-  },
-];
-
 export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   isOpen,
   dayIndex,
@@ -141,7 +61,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterScope, setFilterScope] = useState<'target_muscles' | 'all'>('target_muscles');
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
 
   // Inline Custom Exercise Creation State
   const [customExerciseName, setCustomExerciseName] = useState('');
@@ -170,7 +89,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     }
     setSearchQuery('');
     setSaveSuccess(false);
-    setShowTemplates(false);
     setFilterScope('target_muscles');
     setCustomExerciseName('');
     setCustomAddedFeedback(null);
@@ -316,43 +234,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setSelectedExercises((prev) =>
       prev.filter((item) => item.id !== reId).map((item, idx) => ({ ...item, order: idx + 1 }))
     );
-  };
-
-  // 1-Tap Quick Template Selection
-  const handleSelectTemplate = (template: QuickTemplate) => {
-    setIsRestDay(false);
-    setRoutineName(template.name);
-    setSelectedMuscles(template.muscles);
-
-    // Map template exercise names to real catalog exercises
-    const matchedExercises: RoutineExercise[] = [];
-    template.defaultExerciseNames.forEach((targetName, idx) => {
-      const match = exercises.find(
-        (e) =>
-          e.name.toLowerCase() === targetName.toLowerCase() ||
-          e.name.toLowerCase().includes(targetName.toLowerCase())
-      );
-      if (match) {
-        matchedExercises.push({
-          id: `re-tmpl-${Date.now()}-${idx}`,
-          exerciseId: match.id,
-          exerciseName: match.name,
-          muscleGroup: match.primaryMuscle,
-          equipment: match.equipment,
-          targetSets: match.defaultSets || 3,
-          targetReps: match.defaultReps || '8-12',
-          targetWeightKg: match.defaultWeightKg || 25,
-          restSeconds: match.defaultRestSeconds || 90,
-          order: idx + 1,
-        });
-      }
-    });
-
-    if (matchedExercises.length > 0) {
-      setSelectedExercises(matchedExercises);
-    }
-    setFilterScope('target_muscles');
-    setShowTemplates(false);
   };
 
   // Save Routine Action (Dual-Layer Offline Persistence)
@@ -517,48 +398,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
           ) : (
             /* Active Training Day Configuration */
             <div className="space-y-5">
-              {/* Quick Preset Templates Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#475569] flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-[#00A3A6]" />
-                    <span>Quick Templates (1-Tap Setup)</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="text-xs font-bold text-[#00A3A6] hover:text-[#008B8E] cursor-pointer py-1 px-2 rounded-lg"
-                  >
-                    {showTemplates ? 'Hide Templates' : 'Browse Templates'}
-                  </button>
-                </div>
-
-                {showTemplates && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-2xl bg-white border border-[#CBD5E1]/70 shadow-xs animate-fade-in">
-                    {DAY_TEMPLATES.map((tmpl) => (
-                      <button
-                        key={tmpl.name}
-                        type="button"
-                        onClick={() => handleSelectTemplate(tmpl)}
-                        className="text-left p-3 rounded-xl bg-[#F8FAFC] hover:bg-[#00A3A6]/5 border border-[#CBD5E1]/60 hover:border-[#00A3A6] transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#00A3A6] truncate">
-                            {tmpl.name}
-                          </span>
-                          <span className="text-[10px] font-black uppercase text-[#00A3A6] bg-[#00A3A6]/10 px-1.5 py-0.5 rounded">
-                            {tmpl.badge}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-[#94A3B8] mt-1 truncate">
-                          {tmpl.defaultExerciseNames.slice(0, 3).join(', ')}...
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Routine Name Input */}
               <div className="space-y-1.5">
                 <label
