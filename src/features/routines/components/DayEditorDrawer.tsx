@@ -11,6 +11,7 @@ import {
   Filter,
   ArrowUp,
   ArrowDown,
+  Edit2,
 } from 'lucide-react';
 import { MuscleGroup, Routine, RoutineExercise, Exercise } from '../../../types';
 import { useRoutineStore } from '../../../stores/useRoutineStore';
@@ -37,10 +38,51 @@ const MUSCLE_PILLS: { id: MuscleGroup; label: string }[] = [
   { id: 'forearms', label: 'Forearms' },
 ];
 
-// Helper to normalize any muscle taxonomy to core 8 groups
+// Helper to normalize any muscle taxonomy to core 8 groups (Glutes & Calves map to Legs)
 export const normalizeMuscle = (muscle: string | MuscleGroup): string => {
   if (muscle === 'glutes' || muscle === 'calves') return 'legs';
   return muscle;
+};
+
+// Bulletproof Exercise Filtering evaluating Target Muscles AND Text Search intersection
+export const filterExercises = (
+  catalog: Exercise[],
+  query: string,
+  scope: 'target_muscles' | 'all',
+  targetMuscles: MuscleGroup[]
+): Exercise[] => {
+  const q = query.trim().toLowerCase();
+  const normalizedTargets = targetMuscles.map(normalizeMuscle);
+
+  return catalog.filter((ex) => {
+    const normPrimary = normalizeMuscle(ex.primaryMuscle);
+
+    // 1. Strict Target Muscle filter:
+    // When target groups are restricted, an exercise MUST strictly belong to one of the active groups.
+    if (scope === 'target_muscles' && normalizedTargets.length > 0) {
+      const primaryMatches = normalizedTargets.includes(normPrimary);
+      if (!primaryMatches) {
+        return false;
+      }
+    }
+
+    // 2. Text Search Query matching:
+    if (q) {
+      const nameMatches = ex.name.toLowerCase().includes(q);
+      const muscleMatches = normPrimary.toLowerCase().includes(q);
+      const equipmentMatches =
+        ex.equipment &&
+        ex.equipment !== 'other' &&
+        ex.equipment.toLowerCase().replace('_', ' ').includes(q);
+      const aliasMatches = ex.aliases?.some((a) => a.toLowerCase().includes(q));
+
+      if (!nameMatches && !muscleMatches && !equipmentMatches && !aliasMatches) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 };
 
 export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
@@ -51,7 +93,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   onSaved,
 }) => {
   const { setDayCustomRoutine, setDayRest } = useRoutineStore();
-  const { exercises, addExercise } = useExerciseStore();
+  const { exercises, addExercise, updateExercise, deleteExercise } = useExerciseStore();
 
   const dayName = DAY_NAMES[dayIndex] || 'Day';
 
@@ -82,6 +124,18 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   );
   const [customAddedFeedback, setCustomAddedFeedback] = useState<string | null>(null);
 
+  // State for Editing Custom Exercises Inline
+  const [editingCustomId, setEditingCustomId] = useState<string | null>(null);
+  const [editCustomName, setEditCustomName] = useState('');
+  const [editCustomMuscle, setEditCustomMuscle] = useState<MuscleGroup>('chest');
+
+  // Helper to check if an exercise is custom
+  const isCustomItem = (exerciseId: string, itemObjId?: string): boolean => {
+    if (exerciseId?.startsWith('custom-') || itemObjId?.startsWith('custom-')) return true;
+    const match = exercises.find((e) => e.id === exerciseId || e.id === itemObjId);
+    return !!match?.isCustom;
+  };
+
   // Keep custom muscle category synced with active muscles if not manually set
   useEffect(() => {
     if (selectedMuscles.length > 0 && !selectedMuscles.includes(customMuscle)) {
@@ -109,36 +163,12 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setFilterScope('target_muscles');
     setCustomExerciseName('');
     setCustomAddedFeedback(null);
+    setEditingCustomId(null);
   }, [dayIndex, initialRoutine, isOpen, dayName]);
 
-  // SMART AUTO-FILTERING: Filter catalog dynamically (Glutes automatically rolled under Legs)
+  // SMART AUTO-FILTERING: Filter catalog using strict bulletproof intersection logic
   const filteredCatalog = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-
-    return exercises.filter((ex) => {
-      const normPrimary = normalizeMuscle(ex.primaryMuscle);
-
-      // 1. Text search matching across name, primaryMuscle, equipment, aliases
-      const matchesSearch =
-        !q ||
-        ex.name.toLowerCase().includes(q) ||
-        normPrimary.toLowerCase().includes(q) ||
-        (ex.equipment && ex.equipment !== 'other' && ex.equipment.toLowerCase().includes(q)) ||
-        ex.aliases?.some((a) => a.toLowerCase().includes(q));
-
-      if (!matchesSearch) return false;
-
-      // 2. Strict Dynamic Target Muscle auto-filtering
-      if (filterScope === 'target_muscles' && selectedMuscles.length > 0) {
-        const matchesPrimary = selectedMuscles.includes(normPrimary as MuscleGroup);
-        const matchesSecondary = ex.secondaryMuscles?.some((sm) =>
-          selectedMuscles.includes(normalizeMuscle(sm) as MuscleGroup)
-        );
-        return matchesPrimary || matchesSecondary;
-      }
-
-      return true;
-    });
+    return filterExercises(exercises, searchQuery, filterScope, selectedMuscles);
   }, [exercises, searchQuery, filterScope, selectedMuscles]);
 
   // Toggle muscle selection pill
@@ -253,6 +283,79 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     }
 
     setTimeout(() => setCustomAddedFeedback(null), 3000);
+  };
+
+  // Start editing a custom exercise
+  const handleStartEditCustom = (id: string, currentName: string, currentMuscle: MuscleGroup | string) => {
+    setEditingCustomId(id);
+    setEditCustomName(currentName);
+    setEditCustomMuscle(normalizeMuscle(currentMuscle) as MuscleGroup);
+  };
+
+  // Commit edit changes for a custom exercise
+  const handleSaveEditCustom = (id: string) => {
+    const trimmed = editCustomName.trim();
+    if (!trimmed) return;
+    const normMuscle = normalizeMuscle(editCustomMuscle) as MuscleGroup;
+
+    // 1. Update in exercise store
+    updateExercise(id, { name: trimmed, primaryMuscle: normMuscle });
+
+    // 2. Update in assigned exercises list
+    setSelectedExercises((prev) =>
+      prev.map((item) =>
+        item.exerciseId === id || item.id === id
+          ? { ...item, exerciseName: trimmed, muscleGroup: normMuscle }
+          : item
+      )
+    );
+
+    // 3. Update in localStorage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
+        const updated = stored.map((e: Exercise) =>
+          e.id === id ? { ...e, name: trimmed, primaryMuscle: normMuscle } : e
+        );
+        localStorage.setItem('gym_user_custom_exercises', JSON.stringify(updated));
+        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
+      }
+    } catch (err) {
+      console.warn('localStorage update note', err);
+    }
+
+    setEditingCustomId(null);
+    setCustomAddedFeedback(`Updated "${trimmed}"`);
+    setTimeout(() => setCustomAddedFeedback(null), 2500);
+  };
+
+  // Delete custom exercise permanently
+  const handleDeleteCustomExercise = (id: string) => {
+    // 1. Remove from assigned exercises
+    setSelectedExercises((prev) =>
+      prev
+        .filter((item) => item.exerciseId !== id && item.id !== id)
+        .map((item, idx) => ({ ...item, order: idx + 1 }))
+    );
+
+    // 2. Remove from exercise store
+    deleteExercise(id);
+
+    // 3. Remove from localStorage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
+        const updated = stored.filter((e: Exercise) => e.id !== id);
+        localStorage.setItem('gym_user_custom_exercises', JSON.stringify(updated));
+        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
+      }
+    } catch (err) {
+      console.warn('localStorage delete note', err);
+    }
+
+    if (editingCustomId === id) setEditingCustomId(null);
+    setCustomAddedFeedback('Custom exercise deleted permanently');
+    setTimeout(() => setCustomAddedFeedback(null), 2500);
   };
 
   // Stepper helper for sets
@@ -495,7 +598,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Assigned Movements List with Sequence Reordering (↑ / ↓) */}
+              {/* Assigned Movements List with Unclamped Titles & Contextual Edit/Delete */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
@@ -520,103 +623,203 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedExercises.map((re, idx) => {
                       const displayMuscle = normalizeMuscle(re.muscleGroup);
+                      const isCustom = isCustomItem(re.exerciseId, re.id);
+                      const isEditingThis = editingCustomId === re.exerciseId || editingCustomId === re.id;
+
                       return (
                         <div
                           key={re.id}
-                          className="bg-white border border-[#CBD5E1] rounded-2xl p-3 flex items-center justify-between gap-2 shadow-2xs hover:border-[#00A3A6]/50 transition-all min-h-[56px]"
+                          className="bg-white border border-[#CBD5E1] rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-2xs hover:border-[#00A3A6]/50 transition-all"
                         >
-                          {/* Reorder Arrows + Order Number + Title */}
-                          <div className="flex items-center gap-2 min-w-0">
-                            {/* Sequence Shifting Controls (↑ / ↓) */}
-                            <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+                          {/* Top Row: Order Badge, Unclamped Full Title, Custom Badge, Action Controls */}
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                              <span className="w-6 h-6 rounded-full bg-[#F1F5F9] text-[#64748B] text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 border border-[#CBD5E1]/60">
+                                {idx + 1}
+                              </span>
+
+                              {/* Unclamped Multi-Line Dynamic Wrapping Title */}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-bold text-[#0F172A] leading-snug break-words">
+                                  {re.exerciseName}
+                                </h4>
+
+                                {/* Hierarchical Meta Badges */}
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] sm:text-[11px]">
+                                  <span className="uppercase font-bold text-[#00A3A6] bg-[#00A3A6]/8 px-2 py-0.5 rounded-md border border-[#00A3A6]/20">
+                                    {displayMuscle}
+                                  </span>
+                                  {re.equipment && re.equipment !== 'other' && (
+                                    <span className="text-[#64748B] font-medium capitalize bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#CBD5E1]/50">
+                                      {re.equipment.replace('_', ' ')}
+                                    </span>
+                                  )}
+                                  {isCustom && (
+                                    <span className="text-[#00A3A6] font-extrabold uppercase text-[10px] bg-[#00A3A6]/12 px-2 py-0.5 rounded-md border border-[#00A3A6]/25">
+                                      CUSTOM
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Contextual Action Icons: Custom Edit & Delete/Remove */}
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                              {isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleStartEditCustom(re.exerciseId || re.id, re.exerciseName, re.muscleGroup)
+                                  }
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 border border-[#CBD5E1]/60 transition-colors cursor-pointer active:scale-95"
+                                  title="Edit custom exercise"
+                                  aria-label="Edit custom exercise"
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                              )}
+
+                              {isCustom ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCustomExercise(re.exerciseId || re.id)}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 border border-[#CBD5E1]/60 transition-colors cursor-pointer active:scale-95"
+                                  title="Delete custom exercise permanently"
+                                  aria-label="Delete custom exercise"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => removeExercise(re.id)}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 border border-[#CBD5E1]/60 transition-colors cursor-pointer active:scale-95"
+                                  title="Remove exercise from day"
+                                  aria-label="Remove exercise"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Contextual Inline Custom Edit Form */}
+                          {isEditingThis && (
+                            <div className="bg-[#F8FAFC] border border-[#00A3A6]/40 rounded-xl p-3 space-y-2.5 animate-fade-in">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#00A3A6] block">
+                                Edit Custom Movement
+                              </span>
+                              <input
+                                type="text"
+                                value={editCustomName}
+                                onChange={(e) => setEditCustomName(e.target.value)}
+                                className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs font-bold text-[#0F172A] outline-none focus:border-[#00A3A6] focus:ring-1 focus:ring-[#00A3A6]/20"
+                                placeholder="Exercise name"
+                              />
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-semibold text-[#64748B]">Category:</span>
+                                  <select
+                                    value={editCustomMuscle}
+                                    onChange={(e) => setEditCustomMuscle(normalizeMuscle(e.target.value) as MuscleGroup)}
+                                    className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
+                                  >
+                                    {MUSCLE_PILLS.map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingCustomId(null)}
+                                    className="px-3 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:text-[#0F172A] text-xs font-bold cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveEditCustom(re.exerciseId || re.id)}
+                                    disabled={!editCustomName.trim()}
+                                    className="px-3 py-1 rounded-lg bg-[#00A3A6] text-white text-xs font-bold hover:bg-[#008B8E] cursor-pointer disabled:opacity-40"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Bottom Row / Hierarchical Secondary Info: Sequence Handles + Sets/Reps Controls */}
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F1F5F9]">
+                            {/* Sequence Shifting Handles (↑ / ↓) */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-semibold text-[#64748B] mr-1 hidden sm:inline">
+                                Sequence:
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => moveExercise(idx, 'up')}
                                 disabled={idx === 0}
-                                className="w-6 h-5 flex items-center justify-center rounded bg-[#F1F5F9] text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F1F5F9] disabled:hover:text-[#64748B] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/60"
+                                className="w-8 h-7 flex items-center justify-center rounded-lg bg-[#F8FAFC] text-[#475569] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F8FAFC] disabled:hover:text-[#475569] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/70 active:scale-95"
                                 title="Move exercise up"
                                 aria-label="Move exercise up"
                               >
-                                <ArrowUp size={11} className="stroke-[2.5]" />
+                                <ArrowUp size={13} className="stroke-[2.5]" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => moveExercise(idx, 'down')}
                                 disabled={idx === selectedExercises.length - 1}
-                                className="w-6 h-5 flex items-center justify-center rounded bg-[#F1F5F9] text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F1F5F9] disabled:hover:text-[#64748B] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/60"
+                                className="w-8 h-7 flex items-center justify-center rounded-lg bg-[#F8FAFC] text-[#475569] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F8FAFC] disabled:hover:text-[#475569] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/70 active:scale-95"
                                 title="Move exercise down"
                                 aria-label="Move exercise down"
                               >
-                                <ArrowDown size={11} className="stroke-[2.5]" />
+                                <ArrowDown size={13} className="stroke-[2.5]" />
                               </button>
                             </div>
 
-                            <span className="w-6 h-6 rounded-full bg-[#F1F5F9] text-[#64748B] text-xs font-extrabold flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <span className="text-xs sm:text-sm font-bold text-[#0F172A] block truncate">
-                                {re.exerciseName}
-                              </span>
-                              <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] font-semibold mt-0.5">
-                                <span className="uppercase font-bold text-[#00A3A6]">
-                                  {displayMuscle}
+                            {/* Sets / Reps Stepper Controls */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center border border-[#CBD5E1] rounded-xl bg-[#F8FAFC] overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => updateExerciseSets(re.id, -1)}
+                                  className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer active:scale-95"
+                                  aria-label="Decrease sets"
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 text-xs font-bold text-[#0F172A] min-w-[32px] text-center">
+                                  {re.targetSets}s
                                 </span>
-                                {re.equipment && re.equipment !== 'other' && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="capitalize">{re.equipment.replace('_', ' ')}</span>
-                                  </>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => updateExerciseSets(re.id, 1)}
+                                  className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer active:scale-95"
+                                  aria-label="Increase sets"
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={re.targetReps}
+                                  onChange={(e) => updateExerciseReps(re.id, e.target.value)}
+                                  placeholder="8-12"
+                                  className="w-16 h-8 text-center text-xs font-bold text-[#0F172A] border border-[#CBD5E1] rounded-xl bg-[#F8FAFC] outline-none focus:border-[#00A3A6] focus:ring-1 focus:ring-[#00A3A6]/20"
+                                  title="Target repetitions"
+                                />
+                                <span className="text-[11px] text-[#94A3B8] font-bold">reps</span>
                               </div>
                             </div>
-                          </div>
-
-                          {/* Sets / Reps Stepper Controls */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <div className="flex items-center border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => updateExerciseSets(re.id, -1)}
-                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
-                                aria-label="Decrease sets"
-                              >
-                                -
-                              </button>
-                              <span className="px-1.5 text-xs font-bold text-[#0F172A] min-w-[28px] text-center">
-                                {re.targetSets}s
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => updateExerciseSets(re.id, 1)}
-                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
-                                aria-label="Increase sets"
-                              >
-                                +
-                              </button>
-                            </div>
-
-                            <input
-                              type="text"
-                              value={re.targetReps}
-                              onChange={(e) => updateExerciseReps(re.id, e.target.value)}
-                              placeholder="8-12"
-                              className="w-14 h-8 text-center text-xs font-bold text-[#0F172A] border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] outline-none focus:border-[#00A3A6]"
-                              title="Target repetitions"
-                            />
-
-                            <button
-                              type="button"
-                              onClick={() => removeExercise(re.id)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
-                              title="Remove exercise"
-                              aria-label="Remove exercise"
-                            >
-                              <Trash2 size={16} />
-                            </button>
                           </div>
                         </div>
                       );
@@ -740,7 +943,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                   </div>
                 </form>
 
-                {/* Fluid Exercise Catalog List with Clean 56px+ Touch Targets & Electric Teal Feedback */}
+                {/* Fluid Exercise Catalog List with Clean 56px+ Touch Targets & Contextual Controls */}
                 <div className="border border-[#CBD5E1] rounded-2xl bg-white divide-y divide-[#F1F5F9] max-h-72 sm:max-h-80 overflow-y-auto shadow-2xs">
                   {filteredCatalog.length === 0 ? (
                     <div className="p-6 text-center text-xs text-[#94A3B8] space-y-2">
@@ -767,82 +970,166 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                         (re) => re.exerciseId === ex.id || re.id === ex.id
                       );
                       const displayMuscle = normalizeMuscle(ex.primaryMuscle);
+                      const isCustom = ex.isCustom;
+                      const isEditingThis = editingCustomId === ex.id;
 
                       return (
-                        <div
-                          key={ex.id}
-                          onClick={() => toggleExerciseInRoutine(ex)}
-                          className={`p-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer min-h-[56px] ${
-                            isSelected ? 'bg-[#00A3A6]/8' : 'hover:bg-[#F8FAFC]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Instant Toggle Checkbox (#00A3A6) */}
-                            <div
-                              className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-                                isSelected
-                                  ? 'bg-[#00A3A6] border-[#00A3A6] text-white shadow-xs'
-                                  : 'border-[#CBD5E1] bg-white'
-                              }`}
-                            >
-                              {isSelected && <Check size={14} className="stroke-[3]" />}
-                            </div>
-
-                            <div className="min-w-0">
-                              <span
-                                className={`text-xs sm:text-sm font-bold block truncate ${
-                                  isSelected ? 'text-[#00A3A6]' : 'text-[#0F172A]'
+                        <div key={ex.id} className="flex flex-col">
+                          <div
+                            onClick={() => toggleExerciseInRoutine(ex)}
+                            className={`p-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer min-h-[56px] ${
+                              isSelected ? 'bg-[#00A3A6]/8' : 'hover:bg-[#F8FAFC]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {/* Instant Toggle Checkbox (#00A3A6) */}
+                              <div
+                                className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                                  isSelected
+                                    ? 'bg-[#00A3A6] border-[#00A3A6] text-white shadow-xs'
+                                    : 'border-[#CBD5E1] bg-white'
                                 }`}
                               >
-                                {ex.name}
-                              </span>
-                              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#94A3B8] font-semibold mt-0.5">
-                                <span className="uppercase font-bold text-[#00A3A6]">
-                                  {displayMuscle}
-                                </span>
-                                {ex.equipment && ex.equipment !== 'other' && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="capitalize">{ex.equipment.replace('_', ' ')}</span>
-                                  </>
-                                )}
-                                <span>•</span>
-                                <span>{ex.defaultSets || 3} sets</span>
-                                {ex.isCustom && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="text-[#00A3A6] font-bold uppercase text-[9px] bg-[#00A3A6]/10 px-1 py-0.2 rounded">Custom</span>
-                                  </>
-                                )}
+                                {isSelected && <Check size={14} className="stroke-[3]" />}
                               </div>
+
+                              <div className="min-w-0">
+                                <span
+                                  className={`text-xs sm:text-sm font-bold block truncate ${
+                                    isSelected ? 'text-[#00A3A6]' : 'text-[#0F172A]'
+                                  }`}
+                                >
+                                  {ex.name}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#94A3B8] font-semibold mt-0.5">
+                                  <span className="uppercase font-bold text-[#00A3A6]">
+                                    {displayMuscle}
+                                  </span>
+                                  {ex.equipment && ex.equipment !== 'other' && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="capitalize">{ex.equipment.replace('_', ' ')}</span>
+                                    </>
+                                  )}
+                                  <span>•</span>
+                                  <span>{ex.defaultSets || 3} sets</span>
+                                  {isCustom && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-[#00A3A6] font-bold uppercase text-[9px] bg-[#00A3A6]/10 px-1 py-0.2 rounded">Custom</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right Side: Contextual Edit/Delete for Custom + Add Action Button */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isCustom && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartEditCustom(ex.id, ex.name, ex.primaryMuscle);
+                                    }}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 border border-[#CBD5E1]/60 cursor-pointer transition-colors"
+                                    title="Edit custom exercise"
+                                    aria-label="Edit custom exercise"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCustomExercise(ex.id);
+                                    }}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 border border-[#CBD5E1]/60 cursor-pointer transition-colors"
+                                    title="Delete custom exercise permanently"
+                                    aria-label="Delete custom exercise"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Prominent + ADD / Checked Action Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExerciseInRoutine(ex);
+                                }}
+                                className={`min-h-[40px] min-w-[72px] px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1 active:scale-95 ${
+                                  isSelected
+                                    ? 'bg-[#00A3A6] text-white shadow-xs shadow-[#00A3A6]/30'
+                                    : 'bg-[#00A3A6]/10 text-[#00A3A6] border border-[#00A3A6]/25 hover:bg-[#00A3A6] hover:text-white'
+                                }`}
+                              >
+                                {isSelected ? (
+                                  <>
+                                    <Check size={14} className="stroke-[3]" />
+                                    <span>Added</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={14} className="stroke-[3]" />
+                                    <span>+ Add</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
 
-                          {/* Prominent + ADD / Checked Action Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExerciseInRoutine(ex);
-                            }}
-                            className={`min-h-[44px] min-w-[76px] px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1 active:scale-95 ${
-                              isSelected
-                                ? 'bg-[#00A3A6] text-white shadow-xs shadow-[#00A3A6]/30'
-                                : 'bg-[#00A3A6]/10 text-[#00A3A6] border border-[#00A3A6]/25 hover:bg-[#00A3A6] hover:text-white'
-                            }`}
-                          >
-                            {isSelected ? (
-                              <>
-                                <Check size={14} className="stroke-[3]" />
-                                <span>Added</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus size={14} className="stroke-[3]" />
-                                <span>+ Add</span>
-                              </>
-                            )}
-                          </button>
+                          {/* Inline Catalog Custom Edit Form */}
+                          {isEditingThis && (
+                            <div className="p-3 bg-[#F8FAFC] border-t border-[#00A3A6]/30 space-y-2.5 animate-fade-in">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#00A3A6] block">
+                                Edit Custom Exercise ({ex.name})
+                              </span>
+                              <input
+                                type="text"
+                                value={editCustomName}
+                                onChange={(e) => setEditCustomName(e.target.value)}
+                                className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs font-bold text-[#0F172A] outline-none focus:border-[#00A3A6]"
+                                placeholder="Exercise name"
+                              />
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-semibold text-[#64748B]">Category:</span>
+                                  <select
+                                    value={editCustomMuscle}
+                                    onChange={(e) => setEditCustomMuscle(normalizeMuscle(e.target.value) as MuscleGroup)}
+                                    className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
+                                  >
+                                    {MUSCLE_PILLS.map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingCustomId(null)}
+                                    className="px-3 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:text-[#0F172A] text-xs font-bold cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveEditCustom(ex.id)}
+                                    disabled={!editCustomName.trim()}
+                                    className="px-3 py-1 rounded-lg bg-[#00A3A6] text-white text-xs font-bold hover:bg-[#008B8E] cursor-pointer disabled:opacity-40"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })
