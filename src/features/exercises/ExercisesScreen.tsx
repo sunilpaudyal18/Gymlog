@@ -25,12 +25,25 @@ export const ExercisesScreen: React.FC = () => {
     multiSelectedIds,
     toggleMultiSelect,
     clearMultiSelect,
+    deleteExercise,
   } = useExerciseStore();
 
   const { routines, addExerciseToRoutine } = useRoutineStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 
   const filteredExercises = getFilteredExercises();
+
+  const handleEditExercise = (ex: Exercise) => {
+    setEditingExercise(ex);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteExercise = (ex: Exercise) => {
+    if (window.confirm(`Are you sure you want to permanently delete custom exercise "${ex.name}"?`)) {
+      deleteExercise(ex.id);
+    }
+  };
 
   // Navigate to isolated drill-down category view
   const handleCategoryClick = (muscle: MuscleGroup) => {
@@ -152,6 +165,8 @@ export const ExercisesScreen: React.FC = () => {
                   onAddClick={handleAddSingleToRoutine}
                   isSelected={multiSelectedIds.includes(ex.id)}
                   onSelect={() => toggleMultiSelect(ex.id)}
+                  onEdit={handleEditExercise}
+                  onDelete={handleDeleteExercise}
                   showAddButton={true}
                 />
               ))}
@@ -302,6 +317,8 @@ export const ExercisesScreen: React.FC = () => {
                   onToggleFavorite={toggleFavorite}
                   onClick={handleExerciseClick}
                   onAddClick={handleAddSingleToRoutine}
+                  onEdit={handleEditExercise}
+                  onDelete={handleDeleteExercise}
                   showAddButton={true}
                 />
               ))}
@@ -328,7 +345,11 @@ export const ExercisesScreen: React.FC = () => {
       {showCreateModal && (
         <CreateCustomExerciseModal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          exerciseToEdit={editingExercise}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingExercise(null);
+          }}
           onCreated={(newEx) => {
             if (routineId) {
               handleAddSingleToRoutine(newEx);

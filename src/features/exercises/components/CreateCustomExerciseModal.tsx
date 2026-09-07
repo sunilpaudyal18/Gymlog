@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Dumbbell, BookOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Check, Dumbbell, BookOpen } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { useExerciseStore } from '../../../stores/useExerciseStore';
 import { Exercise, MuscleGroup, Equipment } from '../../../types';
@@ -8,14 +8,16 @@ export interface CreateCustomExerciseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: (exercise: Exercise) => void;
+  exerciseToEdit?: Exercise | null;
 }
 
 export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps> = ({
   isOpen,
   onClose,
   onCreated,
+  exerciseToEdit,
 }) => {
-  const { addExercise } = useExerciseStore();
+  const { addExercise, updateExercise } = useExerciseStore();
 
   const [name, setName] = useState('');
   const [primaryMuscle, setPrimaryMuscle] = useState<MuscleGroup>('chest');
@@ -27,6 +29,34 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
   const [defaultRestSeconds, setDefaultRestSeconds] = useState(90);
   const [instructions, setInstructions] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (exerciseToEdit) {
+      setName(exerciseToEdit.name);
+      setPrimaryMuscle(exerciseToEdit.primaryMuscle);
+      setEquipment((exerciseToEdit.equipment as Equipment) || 'dumbbells');
+      setCategory(exerciseToEdit.category || 'compound');
+      setDefaultSets(exerciseToEdit.defaultSets || 3);
+      setDefaultReps(exerciseToEdit.defaultReps || '8-12');
+      setDefaultWeightKg(exerciseToEdit.defaultWeightKg || 30);
+      setDefaultRestSeconds(exerciseToEdit.defaultRestSeconds || 90);
+      setInstructions(
+        Array.isArray(exerciseToEdit.instructions) ? exerciseToEdit.instructions.join('\n') : ''
+      );
+      setError('');
+    } else {
+      setName('');
+      setPrimaryMuscle('chest');
+      setEquipment('dumbbells');
+      setCategory('compound');
+      setDefaultSets(3);
+      setDefaultReps('8-12');
+      setDefaultWeightKg(30);
+      setDefaultRestSeconds(90);
+      setInstructions('');
+      setError('');
+    }
+  }, [exerciseToEdit, isOpen]);
 
   const muscles: MuscleGroup[] = [
     'chest',
@@ -55,6 +85,33 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
       return;
     }
 
+    const formattedInstructions = instructions.trim()
+      ? instructions.split('\n').filter((l) => l.trim().length > 0)
+      : ['Perform movement with controlled cadence and full range of motion.'];
+
+    if (exerciseToEdit) {
+      const updatedExercise: Exercise = {
+        ...exerciseToEdit,
+        name: trimmed,
+        primaryMuscle,
+        equipment,
+        category,
+        defaultSets,
+        defaultReps,
+        defaultWeightKg,
+        defaultRestSeconds,
+        isCustom: true,
+        instructions: formattedInstructions,
+      };
+
+      updateExercise(exerciseToEdit.id, updatedExercise);
+      if (onCreated) {
+        onCreated(updatedExercise);
+      }
+      onClose();
+      return;
+    }
+
     const id = 'custom-' + trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
     const newExercise: Exercise = {
       id,
@@ -67,9 +124,7 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
       defaultWeightKg,
       defaultRestSeconds,
       isCustom: true,
-      instructions: instructions.trim()
-        ? instructions.split('\n').filter((l) => l.trim().length > 0)
-        : ['Perform movement with controlled cadence and full range of motion.'],
+      instructions: formattedInstructions,
       imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&auto=format&fit=crop&q=80',
     };
 
@@ -81,7 +136,12 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Custom Exercise" type="sheet">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={exerciseToEdit ? 'Edit Custom Movement' : 'Create Custom Exercise'}
+      type="sheet"
+    >
       <div className="space-y-4 select-none pt-1">
         {/* Name Input */}
         <div>
@@ -252,10 +312,19 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
           <button
             type="button"
             onClick={handleCreate}
-            className="w-full bg-[#008B8E] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-[#00A3A6] shadow-sm uppercase tracking-wider text-xs cursor-pointer transition-all"
+            className="w-full bg-[#008B8E] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-[#00A3A6] shadow-sm uppercase tracking-wider text-xs cursor-pointer transition-all active:scale-[0.99]"
           >
-            <Plus size={16} className="stroke-[3]" />
-            <span>SAVE TO EXERCISE LIBRARY</span>
+            {exerciseToEdit ? (
+              <>
+                <Check size={16} className="stroke-[3]" />
+                <span>SAVE CHANGES</span>
+              </>
+            ) : (
+              <>
+                <Plus size={16} className="stroke-[3]" />
+                <span>SAVE TO EXERCISE LIBRARY</span>
+              </>
+            )}
           </button>
         </div>
       </div>

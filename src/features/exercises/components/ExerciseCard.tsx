@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Plus, Check, ChevronRight } from 'lucide-react';
+import { Heart, Plus, Check, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import { Exercise } from '../../../types';
 
 export interface ExerciseCardProps {
@@ -11,6 +11,8 @@ export interface ExerciseCardProps {
   onClick?: (exercise: Exercise) => void;
   showAddButton?: boolean;
   onAddClick?: (exercise: Exercise) => void;
+  onEdit?: (exercise: Exercise) => void;
+  onDelete?: (exercise: Exercise) => void;
 }
 
 export const ExerciseCard: React.FC<ExerciseCardProps> = ({
@@ -22,6 +24,8 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   onClick,
   showAddButton = true,
   onAddClick,
+  onEdit,
+  onDelete,
 }) => {
   return (
     <div
@@ -82,8 +86,42 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
         </div>
       </div>
 
-      {/* Right Action Icons: Favorite & Add / Chevron */}
+      {/* Right Action Icons */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {/* Scoped Custom Exercise Controls: Only user-created custom movements can be edited/deleted */}
+        {exercise.isCustom && (onEdit || onDelete) && (
+          <div className="flex items-center gap-0.5 bg-[#F1F5F9] border border-[#CBD5E1]/80 rounded-xl p-0.5">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(exercise);
+                }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#008B8E] hover:bg-[#008B8E]/10 transition-colors cursor-pointer"
+                title="Edit custom exercise"
+                aria-label="Edit custom exercise"
+              >
+                <Edit2 size={13} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(exercise);
+                }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
+                title="Delete custom exercise"
+                aria-label="Delete custom exercise"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
+        )}
+
         {onToggleFavorite && (
           <button
             type="button"

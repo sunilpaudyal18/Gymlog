@@ -5,6 +5,7 @@ import { MUSCLE_GROUPS_META } from '../../constants/exercises';
 import { useExerciseStore } from '../../stores/useExerciseStore';
 import { useRoutineStore } from '../../stores/useRoutineStore';
 import { ExerciseCard } from './components/ExerciseCard';
+import { CreateCustomExerciseModal } from './components/CreateCustomExerciseModal';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import { Exercise, MuscleGroup, RoutineExercise } from '../../types';
 
@@ -25,6 +26,7 @@ export const MuscleCategoryScreen: React.FC = () => {
     toggleMultiSelect,
     clearMultiSelect,
     getEquipmentCategoriesForMuscle,
+    deleteExercise,
   } = useExerciseStore();
 
   const { routines, addExerciseToRoutine } = useRoutineStore();
@@ -32,6 +34,17 @@ export const MuscleCategoryScreen: React.FC = () => {
   const [localSearch, setLocalSearch] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>(equipmentParam);
   const [selectedSubTarget, setSelectedSubTarget] = useState<string>(targetParam);
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+
+  const handleEditExercise = (ex: Exercise) => {
+    setEditingExercise(ex);
+  };
+
+  const handleDeleteExercise = (ex: Exercise) => {
+    if (window.confirm(`Are you sure you want to permanently delete custom exercise "${ex.name}"?`)) {
+      deleteExercise(ex.id);
+    }
+  };
 
   // Sync state with URL params
   useEffect(() => {
@@ -96,8 +109,6 @@ export const MuscleCategoryScreen: React.FC = () => {
         { id: 'all', label: 'All Legs' },
         { id: 'quads', label: 'Quadriceps' },
         { id: 'hamstrings', label: 'Hamstrings' },
-        { id: 'glutes', label: 'Glutes' },
-        { id: 'calves', label: 'Calves' },
         { id: 'adductors', label: 'Adductors' },
         { id: 'abductors', label: 'Abductors' },
         { id: 'tibialis', label: 'Tibialis / Shin' },
@@ -182,12 +193,6 @@ export const MuscleCategoryScreen: React.FC = () => {
         } else if (selectedSubTarget === 'hamstrings') {
           const isHam = terms.includes('hamstrings') || terms.includes('rdl') || terms.includes('leg curl') || terms.includes('nordic') || name.includes('curl') || name.includes('rdl') || name.includes('deadlift') || name.includes('nordic');
           if (!isHam) return false;
-        } else if (selectedSubTarget === 'glutes') {
-          const isGlute = ex.primaryMuscle === 'glutes' || terms.includes('glutes') || terms.includes('hip thrust') || terms.includes('kickback') || name.includes('thrust') || name.includes('bridge') || name.includes('kickback') || name.includes('abduction');
-          if (!isGlute) return false;
-        } else if (selectedSubTarget === 'calves') {
-          const isCalf = ex.primaryMuscle === 'calves' || terms.includes('calves') || terms.includes('calf') || name.includes('calf');
-          if (!isCalf) return false;
         } else if (selectedSubTarget === 'adductors') {
           const isAdd = terms.includes('adductors') || terms.includes('inner thigh') || terms.includes('copenhagen') || name.includes('adduction') || name.includes('copenhagen') || name.includes('sumo');
           if (!isAdd) return false;
@@ -527,6 +532,8 @@ export const MuscleCategoryScreen: React.FC = () => {
                 onToggleFavorite={toggleFavorite}
                 onClick={handleExerciseClick}
                 onAddClick={handleAddSingleToRoutine}
+                onEdit={handleEditExercise}
+                onDelete={handleDeleteExercise}
                 showAddButton={true}
               />
             ))}
@@ -546,6 +553,15 @@ export const MuscleCategoryScreen: React.FC = () => {
             <span>ADD {multiSelectedIds.length} TO ROUTINE</span>
           </button>
         </div>
+      )}
+
+      {/* Edit Custom Exercise Modal */}
+      {editingExercise && (
+        <CreateCustomExerciseModal
+          isOpen={Boolean(editingExercise)}
+          exerciseToEdit={editingExercise}
+          onClose={() => setEditingExercise(null)}
+        />
       )}
     </div>
   );

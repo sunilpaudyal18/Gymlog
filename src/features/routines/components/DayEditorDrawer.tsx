@@ -11,7 +11,6 @@ import {
   Filter,
   ArrowUp,
   ArrowDown,
-  Edit2,
 } from 'lucide-react';
 import { MuscleGroup, Routine, RoutineExercise, Exercise } from '../../../types';
 import { useRoutineStore } from '../../../stores/useRoutineStore';
@@ -130,11 +129,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   );
   const [customAddedFeedback, setCustomAddedFeedback] = useState<string | null>(null);
 
-  // State for Editing Custom Exercises Inline
-  const [editingCustomId, setEditingCustomId] = useState<string | null>(null);
-  const [editCustomName, setEditCustomName] = useState('');
-  const [editCustomMuscle, setEditCustomMuscle] = useState<MuscleGroup>('chest');
-
   // Helper to check if an exercise is custom
   const isCustomItem = (exerciseId: string, itemObjId?: string): boolean => {
     if (exerciseId?.startsWith('custom-') || itemObjId?.startsWith('custom-')) return true;
@@ -169,7 +163,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setFilterScope('target_muscles');
     setCustomExerciseName('');
     setCustomAddedFeedback(null);
-    setEditingCustomId(null);
   }, [dayIndex, initialRoutine, isOpen, dayName]);
 
   // SMART AUTO-FILTERING: Filter catalog using strict bulletproof intersection logic
@@ -283,74 +276,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setTimeout(() => setCustomAddedFeedback(null), 3000);
   };
 
-  // Start editing a custom exercise
-  const handleStartEditCustom = (id: string, currentName: string, currentMuscle: MuscleGroup | string) => {
-    setEditingCustomId(id);
-    setEditCustomName(currentName);
-    setEditCustomMuscle(normalizeMuscle(currentMuscle) as MuscleGroup);
-  };
 
-  // Commit edit changes for a custom exercise
-  const handleSaveEditCustom = (id: string) => {
-    const trimmed = editCustomName.trim();
-    if (!trimmed) return;
-    const normMuscle = normalizeMuscle(editCustomMuscle) as MuscleGroup;
-
-    // 1. Update in exercise store
-    updateExercise(id, { name: trimmed, primaryMuscle: normMuscle });
-
-    // 2. Update in assigned exercises list
-    setSelectedExercises((prev) =>
-      prev.map((item) =>
-        item.exerciseId === id || item.id === id
-          ? { ...item, exerciseName: trimmed, muscleGroup: normMuscle }
-          : item
-      )
-    );
-
-    // 3. Update in protected storage
-    const existing = exercises.find((e) => e.id === id);
-    const updatedEx: Exercise = {
-      ...(existing || {
-        id,
-        equipment: 'other',
-        category: 'compound',
-        defaultSets: 3,
-        defaultReps: '8-12',
-        defaultRestSeconds: 90,
-        defaultWeightKg: 20,
-      }),
-      id,
-      name: trimmed,
-      primaryMuscle: normMuscle,
-      isCustom: true,
-    };
-    persistProtectedCustomExercise(updatedEx);
-
-    setEditingCustomId(null);
-    setCustomAddedFeedback(`Updated "${trimmed}"`);
-    setTimeout(() => setCustomAddedFeedback(null), 2500);
-  };
-
-  // Delete custom exercise permanently
-  const handleDeleteCustomExercise = (id: string) => {
-    // 1. Remove from assigned exercises
-    setSelectedExercises((prev) =>
-      prev
-        .filter((item) => item.exerciseId !== id && item.id !== id)
-        .map((item, idx) => ({ ...item, order: idx + 1 }))
-    );
-
-    // 2. Remove from exercise store
-    deleteExercise(id);
-
-    // 3. Remove from protected storage
-    removeProtectedCustomExercise(id);
-
-    if (editingCustomId === id) setEditingCustomId(null);
-    setCustomAddedFeedback('Custom exercise deleted permanently');
-    setTimeout(() => setCustomAddedFeedback(null), 2500);
-  };
 
   // Stepper helper for sets
   const updateExerciseSets = (reId: string, delta: number) => {
@@ -623,7 +549,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                     {selectedExercises.map((re, idx) => {
                       const displayMuscle = normalizeMuscle(re.muscleGroup);
                       const isCustom = isCustomItem(re.exerciseId, re.id);
-                      const isEditingThis = editingCustomId === re.exerciseId || editingCustomId === re.id;
 
                       return (
                         <div
@@ -643,52 +568,35 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                   {re.exerciseName}
                                 </h4>
 
-                                {/* Hierarchical Meta Badges */}
-                                <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] sm:text-[11px]">
-                                  <span className="uppercase font-bold text-[#00A3A6] bg-[#00A3A6]/8 px-2 py-0.5 rounded-md border border-[#00A3A6]/20">
-                                    {displayMuscle}
-                                  </span>
-                                  {re.equipment && re.equipment !== 'other' && (
-                                    <span className="text-[#64748B] font-medium capitalize bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#CBD5E1]/50">
-                                      {re.equipment.replace('_', ' ')}
+                                  {/* Hierarchical Secondary Tags: Muscle, Equipment, Sets, Weight, Custom */}
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] sm:text-[11px]">
+                                    <span className="uppercase font-bold text-[#00A3A6] bg-[#00A3A6]/8 px-2 py-0.5 rounded-md border border-[#00A3A6]/20">
+                                      {displayMuscle}
                                     </span>
-                                  )}
-                                  {isCustom && (
-                                    <span className="text-[#00A3A6] font-extrabold uppercase text-[10px] bg-[#00A3A6]/12 px-2 py-0.5 rounded-md border border-[#00A3A6]/25">
-                                      CUSTOM
+                                    {re.equipment && re.equipment !== 'other' && (
+                                      <span className="text-[#64748B] font-medium capitalize bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#CBD5E1]/50">
+                                        {re.equipment.replace('_', ' ')}
+                                      </span>
+                                    )}
+                                    <span className="text-[#64748B] font-medium bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#CBD5E1]/50">
+                                      {re.targetSets} sets × {re.targetReps} reps
                                     </span>
-                                  )}
+                                    {re.targetWeightKg !== undefined && re.targetWeightKg > 0 && (
+                                      <span className="text-[#64748B] font-medium bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#CBD5E1]/50">
+                                        {re.targetWeightKg} kg
+                                      </span>
+                                    )}
+                                    {isCustom && (
+                                      <span className="text-[#00A3A6] font-extrabold uppercase text-[10px] bg-[#00A3A6]/12 px-2 py-0.5 rounded-md border border-[#00A3A6]/25">
+                                        CUSTOM
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Contextual Action Icons: Custom Edit & Delete/Remove */}
-                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                              {isCustom && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleStartEditCustom(re.exerciseId || re.id, re.exerciseName, re.muscleGroup)
-                                  }
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 border border-[#CBD5E1]/60 transition-colors cursor-pointer active:scale-95"
-                                  title="Edit custom exercise"
-                                  aria-label="Edit custom exercise"
-                                >
-                                  <Edit2 size={13} />
-                                </button>
-                              )}
-
-                              {isCustom ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCustomExercise(re.exerciseId || re.id)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 border border-[#CBD5E1]/60 transition-colors cursor-pointer active:scale-95"
-                                  title="Delete custom exercise permanently"
-                                  aria-label="Delete custom exercise"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              ) : (
+                              {/* Right Action: Clean Remove from Routine only */}
+                              <div className="flex items-center shrink-0 pt-0.5">
                                 <button
                                   type="button"
                                   onClick={() => removeExercise(re.id)}
@@ -696,60 +604,10 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                   title="Remove exercise from day"
                                   aria-label="Remove exercise"
                                 >
-                                  <Trash2 size={13} />
+                                  <Trash2 size={14} />
                                 </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Contextual Inline Custom Edit Form */}
-                          {isEditingThis && (
-                            <div className="bg-[#F8FAFC] border border-[#00A3A6]/40 rounded-xl p-3 space-y-2.5 animate-fade-in">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#00A3A6] block">
-                                Edit Custom Movement
-                              </span>
-                              <input
-                                type="text"
-                                value={editCustomName}
-                                onChange={(e) => setEditCustomName(e.target.value)}
-                                className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs font-bold text-[#0F172A] outline-none focus:border-[#00A3A6] focus:ring-1 focus:ring-[#00A3A6]/20"
-                                placeholder="Exercise name"
-                              />
-                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[11px] font-semibold text-[#64748B]">Category:</span>
-                                  <select
-                                    value={editCustomMuscle}
-                                    onChange={(e) => setEditCustomMuscle(normalizeMuscle(e.target.value) as MuscleGroup)}
-                                    className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
-                                  >
-                                    {MUSCLE_PILLS.map((m) => (
-                                      <option key={m.id} value={m.id}>
-                                        {m.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingCustomId(null)}
-                                    className="px-3 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:text-[#0F172A] text-xs font-bold cursor-pointer"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveEditCustom(re.exerciseId || re.id)}
-                                    disabled={!editCustomName.trim()}
-                                    className="px-3 py-1 rounded-lg bg-[#00A3A6] text-white text-xs font-bold hover:bg-[#008B8E] cursor-pointer disabled:opacity-40"
-                                  >
-                                    Save
-                                  </button>
-                                </div>
                               </div>
                             </div>
-                          )}
 
                           {/* Bottom Row / Hierarchical Secondary Info: Sequence Handles + Sets/Reps Controls */}
                           <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F1F5F9]">
@@ -967,7 +825,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                       );
                       const displayMuscle = normalizeMuscle(ex.primaryMuscle);
                       const isCustom = ex.isCustom;
-                      const isEditingThis = editingCustomId === ex.id;
 
                       return (
                         <div key={ex.id} className="flex flex-col">
@@ -977,7 +834,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                               isSelected ? 'bg-[#00A3A6]/8' : 'hover:bg-[#F8FAFC]'
                             }`}
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               {/* Instant Toggle Checkbox (#00A3A6) */}
                               <div
                                 className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
@@ -1018,38 +875,8 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                               </div>
                             </div>
 
-                            {/* Right Side: Contextual Edit/Delete for Custom + Add Action Button */}
-                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                              {isCustom && (
-                                <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200/80 rounded-xl p-0.5 shadow-2xs">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartEditCustom(ex.id, ex.name, ex.primaryMuscle);
-                                    }}
-                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 transition-colors cursor-pointer"
-                                    title="Edit custom exercise"
-                                    aria-label="Edit custom exercise"
-                                  >
-                                    <Edit2 size={13} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteCustomExercise(ex.id);
-                                    }}
-                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
-                                    title="Delete custom exercise permanently"
-                                    aria-label="Delete custom exercise"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                              )}
-
-                              {/* Prominent + ADD / Checked Action Button */}
+                            {/* Right Side: Prominent + ADD / Checked Action Button */}
+                            <div className="flex items-center shrink-0 ml-2">
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1076,55 +903,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                               </button>
                             </div>
                           </div>
-
-                          {/* Inline Catalog Custom Edit Form */}
-                          {isEditingThis && (
-                            <div className="p-3 bg-[#F8FAFC] border-t border-[#00A3A6]/30 space-y-2.5 animate-fade-in">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#00A3A6] block">
-                                Edit Custom Exercise ({ex.name})
-                              </span>
-                              <input
-                                type="text"
-                                value={editCustomName}
-                                onChange={(e) => setEditCustomName(e.target.value)}
-                                className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs font-bold text-[#0F172A] outline-none focus:border-[#00A3A6]"
-                                placeholder="Exercise name"
-                              />
-                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[11px] font-semibold text-[#64748B]">Category:</span>
-                                  <select
-                                    value={editCustomMuscle}
-                                    onChange={(e) => setEditCustomMuscle(normalizeMuscle(e.target.value) as MuscleGroup)}
-                                    className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
-                                  >
-                                    {MUSCLE_PILLS.map((m) => (
-                                      <option key={m.id} value={m.id}>
-                                        {m.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingCustomId(null)}
-                                    className="px-3 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:text-[#0F172A] text-xs font-bold cursor-pointer"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveEditCustom(ex.id)}
-                                    disabled={!editCustomName.trim()}
-                                    className="px-3 py-1 rounded-lg bg-[#00A3A6] text-white text-xs font-bold hover:bg-[#008B8E] cursor-pointer disabled:opacity-40"
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
                     })
