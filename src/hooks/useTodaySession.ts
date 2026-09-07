@@ -71,13 +71,19 @@ export function useTodaySession(): TodaySessionInfo {
     activeSession?.exercises?.some((ex) => ex.sets?.some((s) => s.completed))
   );
 
-  // Auto-cleanup: If today is a rest day, dismiss any stale activeSession
+  // Auto-cleanup: Dismiss stale activeSession if today is rest day, session was started on a prior day, or routine split mismatches
   useEffect(() => {
-    if (isRestDay && activeSession) {
-      // If today is a rest day, dismiss the lingering session
-      cancelWorkout();
+    if (activeSession) {
+      const isPriorDay = activeSession.startedAt
+        ? !isSameCalendarDay(activeSession.startedAt, Date.now())
+        : false;
+      const isSplitMismatch = Boolean(todayRoutine && activeSession.routineId !== todayRoutine.id);
+
+      if (isRestDay || isPriorDay || isSplitMismatch) {
+        cancelWorkout();
+      }
     }
-  }, [isRestDay, activeSession, cancelWorkout]);
+  }, [isRestDay, activeSession, todayRoutine, cancelWorkout]);
 
   // Unified status
   const status: TodayWorkoutStatus = useMemo(() => {

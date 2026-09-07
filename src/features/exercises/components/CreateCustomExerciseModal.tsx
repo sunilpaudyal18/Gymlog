@@ -31,13 +31,11 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
   const muscles: MuscleGroup[] = [
     'chest',
     'back',
+    'legs',
     'shoulders',
     'biceps',
     'triceps',
-    'legs',
-    'glutes',
     'abs',
-    'calves',
     'forearms',
   ];
 
@@ -68,6 +66,7 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
       defaultReps,
       defaultWeightKg,
       defaultRestSeconds,
+      isCustom: true,
       instructions: instructions.trim()
         ? instructions.split('\n').filter((l) => l.trim().length > 0)
         : ['Perform movement with controlled cadence and full range of motion.'],

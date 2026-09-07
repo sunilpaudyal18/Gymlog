@@ -5,6 +5,10 @@ import { PRESET_ROUTINES } from '../constants/routines';
 import { indexedDbStorage } from '../services/database/indexedDbStorage';
 import { calculateEstimatedDurationMin } from '../utils/workoutCalc';
 import { DEFAULT_WEEKLY_SCHEDULE, getCurrentDayIndex } from '../utils/scheduler';
+import {
+  persistProtectedSavedRoutine,
+  removeProtectedSavedRoutine,
+} from '../services/storage/protectedStorage';
 
 interface RoutineState {
   routines: Routine[];
@@ -64,6 +68,7 @@ export const useRoutineStore = create<RoutineState>()(
             estimatedDurationMin: estimatedMin,
             updatedAt: Date.now(),
           };
+          persistProtectedSavedRoutine(updatedRoutine);
           set((state) => ({
             routines: state.routines.map((r) => (r.id === existingRoutineId ? updatedRoutine : r)),
           }));
@@ -81,6 +86,7 @@ export const useRoutineStore = create<RoutineState>()(
             updatedAt: Date.now(),
             lastPerformed: 'Not performed yet',
           };
+          persistProtectedSavedRoutine(newRoutine);
           set((state) => ({
             routines: [newRoutine, ...state.routines],
             weeklySchedule: {
@@ -105,6 +111,7 @@ export const useRoutineStore = create<RoutineState>()(
     const estimatedMin =
       routine.estimatedDurationMin || calculateEstimatedDurationMin(routine.exercises);
     const enriched = { ...routine, estimatedDurationMin: estimatedMin };
+    persistProtectedSavedRoutine(enriched);
     set((state) => ({
       routines: [enriched, ...state.routines],
     }));
@@ -114,18 +121,21 @@ export const useRoutineStore = create<RoutineState>()(
     set((state) => ({
       routines: state.routines.map((r) => {
         if (r.id !== id) return r;
-        const newExercises = updated.exercises || r.exercises;
-        const estimatedMin = calculateEstimatedDurationMin(newExercises);
-        return {
+        const exercises = updated.exercises || r.exercises;
+        const estimatedMin = calculateEstimatedDurationMin(exercises);
+        const merged = {
           ...r,
           ...updated,
           estimatedDurationMin: estimatedMin,
           updatedAt: Date.now(),
         };
+        persistProtectedSavedRoutine(merged);
+        return merged;
       }),
     })),
 
-  deleteRoutine: (id) =>
+  deleteRoutine: (id) => {
+    removeProtectedSavedRoutine(id);
     set((state) => {
       const remaining = state.routines.filter((r) => r.id !== id);
       const newActiveId =
@@ -136,7 +146,8 @@ export const useRoutineStore = create<RoutineState>()(
         routines: remaining,
         activeRoutineId: newActiveId,
       };
-    }),
+    });
+  },
 
   duplicateRoutine: (routine) => {
     const newId = 'routine-dup-' + Date.now();

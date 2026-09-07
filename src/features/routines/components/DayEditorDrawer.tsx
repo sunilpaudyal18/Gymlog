@@ -17,6 +17,12 @@ import { MuscleGroup, Routine, RoutineExercise, Exercise } from '../../../types'
 import { useRoutineStore } from '../../../stores/useRoutineStore';
 import { useExerciseStore } from '../../../stores/useExerciseStore';
 import { DAY_NAMES, REST_DAY_INFO } from '../../../utils/scheduler';
+import {
+  persistProtectedCustomExercise,
+  removeProtectedCustomExercise,
+  persistProtectedSavedRoutine,
+  PROTECTED_STORAGE_KEYS,
+} from '../../../services/storage/protectedStorage';
 
 interface DayEditorDrawerProps {
   isOpen: boolean;
@@ -271,16 +277,8 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setCustomExerciseName('');
     setCustomAddedFeedback(`Added "${trimmed}" to routine!`);
 
-    // Direct synchronous localStorage snapshot for immediate offline persistence
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const storedCustom = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
-        localStorage.setItem('gym_user_custom_exercises', JSON.stringify([newCustomEx, ...storedCustom]));
-        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
-      }
-    } catch (err) {
-      console.warn('Direct offline backup note', err);
-    }
+    // Direct synchronous protected localStorage persistence
+    persistProtectedCustomExercise(newCustomEx);
 
     setTimeout(() => setCustomAddedFeedback(null), 3000);
   };
@@ -310,19 +308,24 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
       )
     );
 
-    // 3. Update in localStorage
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const stored = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
-        const updated = stored.map((e: Exercise) =>
-          e.id === id ? { ...e, name: trimmed, primaryMuscle: normMuscle } : e
-        );
-        localStorage.setItem('gym_user_custom_exercises', JSON.stringify(updated));
-        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
-      }
-    } catch (err) {
-      console.warn('localStorage update note', err);
-    }
+    // 3. Update in protected storage
+    const existing = exercises.find((e) => e.id === id);
+    const updatedEx: Exercise = {
+      ...(existing || {
+        id,
+        equipment: 'other',
+        category: 'compound',
+        defaultSets: 3,
+        defaultReps: '8-12',
+        defaultRestSeconds: 90,
+        defaultWeightKg: 20,
+      }),
+      id,
+      name: trimmed,
+      primaryMuscle: normMuscle,
+      isCustom: true,
+    };
+    persistProtectedCustomExercise(updatedEx);
 
     setEditingCustomId(null);
     setCustomAddedFeedback(`Updated "${trimmed}"`);
@@ -341,17 +344,8 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     // 2. Remove from exercise store
     deleteExercise(id);
 
-    // 3. Remove from localStorage
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const stored = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
-        const updated = stored.filter((e: Exercise) => e.id !== id);
-        localStorage.setItem('gym_user_custom_exercises', JSON.stringify(updated));
-        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
-      }
-    } catch (err) {
-      console.warn('localStorage delete note', err);
-    }
+    // 3. Remove from protected storage
+    removeProtectedCustomExercise(id);
 
     if (editingCustomId === id) setEditingCustomId(null);
     setCustomAddedFeedback('Custom exercise deleted permanently');
@@ -385,16 +379,18 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     );
   };
 
-  // Save Routine Action (Dual-Layer Offline Persistence)
+  // Save Routine Action (Dual-Layer Protected Persistence)
   const handleSaveRoutine = () => {
     if (isRestDay) {
       setDayRest(dayIndex);
     } else {
-      setDayCustomRoutine(dayIndex, {
+      const savedRoutine = setDayCustomRoutine(dayIndex, {
         name: routineName.trim() || `${dayName} Workout`,
         targetMuscles: selectedMuscles.length > 0 ? selectedMuscles : ['chest'],
         exercises: selectedExercises,
       });
+      // Save directly into protected saved routines storage
+      persistProtectedSavedRoutine(savedRoutine);
     }
 
     // Direct synchronous localStorage snapshot for guaranteed offline persistence
@@ -993,47 +989,46 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                 {isSelected && <Check size={14} className="stroke-[3]" />}
                               </div>
 
-                              <div className="min-w-0">
-                                <span
-                                  className={`text-xs sm:text-sm font-bold block truncate ${
+                              <div className="min-w-0 flex-1">
+                                <h4
+                                  className={`text-xs sm:text-sm font-bold leading-snug break-words ${
                                     isSelected ? 'text-[#00A3A6]' : 'text-[#0F172A]'
                                   }`}
                                 >
                                   {ex.name}
-                                </span>
-                                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#94A3B8] font-semibold mt-0.5">
-                                  <span className="uppercase font-bold text-[#00A3A6]">
+                                </h4>
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] text-[#64748B] font-medium mt-1">
+                                  <span className="uppercase font-bold text-[#00A3A6] bg-[#00A3A6]/8 px-1.5 py-0.5 rounded border border-[#00A3A6]/20">
                                     {displayMuscle}
                                   </span>
                                   {ex.equipment && ex.equipment !== 'other' && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="capitalize">{ex.equipment.replace('_', ' ')}</span>
-                                    </>
+                                    <span className="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
+                                      {ex.equipment.replace('_', ' ')}
+                                    </span>
                                   )}
-                                  <span>•</span>
-                                  <span>{ex.defaultSets || 3} sets</span>
+                                  <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
+                                    {ex.defaultSets || 3} sets
+                                  </span>
                                   {isCustom && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-[#00A3A6] font-bold uppercase text-[9px] bg-[#00A3A6]/10 px-1 py-0.2 rounded">Custom</span>
-                                    </>
+                                    <span className="text-[#00A3A6] font-extrabold uppercase text-[9px] tracking-wider bg-[#00A3A6]/12 px-1.5 py-0.5 rounded border border-[#00A3A6]/25 shrink-0">
+                                      CUSTOM
+                                    </span>
                                   )}
                                 </div>
                               </div>
                             </div>
 
                             {/* Right Side: Contextual Edit/Delete for Custom + Add Action Button */}
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
                               {isCustom && (
-                                <>
+                                <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200/80 rounded-xl p-0.5 shadow-2xs">
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleStartEditCustom(ex.id, ex.name, ex.primaryMuscle);
                                     }}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 border border-[#CBD5E1]/60 cursor-pointer transition-colors"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 transition-colors cursor-pointer"
                                     title="Edit custom exercise"
                                     aria-label="Edit custom exercise"
                                   >
@@ -1045,13 +1040,13 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                       e.stopPropagation();
                                       handleDeleteCustomExercise(ex.id);
                                     }}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 border border-[#CBD5E1]/60 cursor-pointer transition-colors"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
                                     title="Delete custom exercise permanently"
                                     aria-label="Delete custom exercise"
                                   >
                                     <Trash2 size={13} />
                                   </button>
-                                </>
+                                </div>
                               )}
 
                               {/* Prominent + ADD / Checked Action Button */}
@@ -1061,7 +1056,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                   e.stopPropagation();
                                   toggleExerciseInRoutine(ex);
                                 }}
-                                className={`min-h-[40px] min-w-[72px] px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1 active:scale-95 ${
+                                className={`min-h-[38px] min-w-[70px] px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1 active:scale-95 ${
                                   isSelected
                                     ? 'bg-[#00A3A6] text-white shadow-xs shadow-[#00A3A6]/30'
                                     : 'bg-[#00A3A6]/10 text-[#00A3A6] border border-[#00A3A6]/25 hover:bg-[#00A3A6] hover:text-white'

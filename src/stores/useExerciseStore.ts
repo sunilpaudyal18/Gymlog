@@ -3,6 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { Exercise, MuscleGroup, Equipment } from '../types';
 import { PRESET_EXERCISES } from '../constants/exercises';
 import { indexedDbStorage } from '../services/database/indexedDbStorage';
+import {
+  persistProtectedCustomExercise,
+  removeProtectedCustomExercise,
+} from '../services/storage/protectedStorage';
 
 export interface EquipmentCategoryInfo {
   id: Equipment | 'all';
@@ -77,21 +81,38 @@ export const useExerciseStore = create<ExerciseState>()(
           ].slice(0, 10),
         })),
 
-      addExercise: (exercise) =>
+      addExercise: (exercise) => {
+        if (exercise.isCustom) {
+          persistProtectedCustomExercise(exercise);
+        }
         set((state) => ({
           exercises: [exercise, ...state.exercises.filter((e) => e.id !== exercise.id)],
-        })),
+        }));
+      },
 
-      updateExercise: (id, updated) =>
-        set((state) => ({
-          exercises: state.exercises.map((e) => (e.id === id ? { ...e, ...updated } : e)),
-        })),
+      updateExercise: (id, updated) => {
+        set((state) => {
+          const updatedExercises = state.exercises.map((e) => {
+            if (e.id === id) {
+              const merged = { ...e, ...updated };
+              if (merged.isCustom) {
+                persistProtectedCustomExercise(merged);
+              }
+              return merged;
+            }
+            return e;
+          });
+          return { exercises: updatedExercises };
+        });
+      },
 
-      deleteExercise: (id) =>
+      deleteExercise: (id) => {
+        removeProtectedCustomExercise(id);
         set((state) => ({
           exercises: state.exercises.filter((e) => e.id !== id),
           favorites: state.favorites.filter((favId) => favId !== id),
-        })),
+        }));
+      },
 
       getExerciseById: (id) => {
         const { exercises } = get();

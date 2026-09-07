@@ -51,20 +51,34 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </button>
         )}
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <h4 className="text-sm font-bold text-[#0F172A] group-hover:text-[#008B8E] transition-colors truncate">
+            <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#008B8E] transition-colors leading-snug break-words">
               {exercise.name}
             </h4>
-            {exercise.category && (
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[#008B8E] bg-[#008B8E]/10 px-1.5 py-0.2 rounded border border-[#008B8E]/20 shrink-0">
+            {exercise.isCustom ? (
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#008B8E] bg-[#008B8E]/12 px-1.5 py-0.5 rounded-md border border-[#008B8E]/25 shrink-0">
+                CUSTOM
+              </span>
+            ) : exercise.category ? (
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[#008B8E] bg-[#008B8E]/10 px-1.5 py-0.5 rounded-md border border-[#008B8E]/20 shrink-0">
                 {exercise.category}
               </span>
-            )}
+            ) : null}
           </div>
-          <p className="text-[11px] text-[#64748B] mt-0.5 capitalize truncate">
-            {exercise.primaryMuscle} • {exercise.equipment.replace(/_/g, ' ')} • {exercise.defaultSets} sets × {exercise.defaultReps} reps
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] text-[#64748B] mt-1 capitalize font-medium">
+            <span className="uppercase font-bold text-[#008B8E] bg-[#008B8E]/8 px-1.5 py-0.5 rounded border border-[#008B8E]/20">
+              {exercise.primaryMuscle}
+            </span>
+            {exercise.equipment && exercise.equipment !== 'other' && (
+              <span className="bg-[#F1F5F9] px-1.5 py-0.5 rounded border border-[#CBD5E1]/60 text-[#64748B]">
+                {exercise.equipment.replace(/_/g, ' ')}
+              </span>
+            )}
+            <span className="bg-[#F1F5F9] px-1.5 py-0.5 rounded border border-[#CBD5E1]/60 text-[#64748B]">
+              {exercise.defaultSets} sets × {exercise.defaultReps} reps
+            </span>
+          </div>
         </div>
       </div>
 

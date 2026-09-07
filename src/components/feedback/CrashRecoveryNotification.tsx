@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, CheckCircle2, X } from 'lucide-react';
 import { crashRecoveryService, CrashRecoveryResult } from '../../services/recovery/crashRecoveryService';
+import { useRoutineStore } from '../../stores/useRoutineStore';
+import { isSameCalendarDay } from '../../utils/scheduler';
 
 export const CrashRecoveryNotification: React.FC = () => {
   const navigate = useNavigate();
   const [recoveryData, setRecoveryData] = useState<CrashRecoveryResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const todayRoutine = useRoutineStore((s) => s.getTodayScheduledRoutine());
 
   useEffect(() => {
     const unsubscribe = crashRecoveryService.subscribe((result) => {
@@ -22,6 +25,16 @@ export const CrashRecoveryNotification: React.FC = () => {
   }, []);
 
   if (!recoveryData || !recoveryData.recovered || dismissed) return null;
+
+  // Real-Time Day Resolution Guard: Suppress mismatched banner if session doesn't match today's scheduled split
+  const isToday = recoveryData.session?.startedAt
+    ? isSameCalendarDay(recoveryData.session.startedAt, Date.now())
+    : false;
+  const isDayMatched = Boolean(todayRoutine && recoveryData.session?.routineId === todayRoutine.id);
+
+  if (!isToday || !isDayMatched) {
+    return null;
+  }
 
   return (
     <div className="fixed top-3 left-4 right-4 sm:left-auto sm:right-6 z-[9990] max-w-md bg-white border border-[#008B8E]/40 rounded-2xl p-3.5 shadow-xl animate-scale-up backdrop-blur-md">

@@ -307,11 +307,11 @@ export const CreateRoutineScreen: React.FC = () => {
                       <span className="w-5 h-5 rounded-full bg-[#008B8E]/10 text-[#008B8E] text-[10px] font-bold font-mono-metric flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-[#0F172A] truncate">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] leading-snug break-words">
                           {ex.exerciseName}
                         </h4>
-                        <span className="text-[11px] text-[#008B8E] font-semibold block capitalize">
+                        <span className="text-[11px] text-[#008B8E] font-semibold block capitalize mt-0.5">
                           {ex.targetSets} sets × {ex.targetReps} reps • {ex.equipment}
                         </span>
                       </div>
@@ -391,15 +391,25 @@ export const CreateRoutineScreen: React.FC = () => {
                 key={ex.id}
                 className="flex items-center justify-between p-3.5 hover:bg-[#F8FAFC] transition-colors"
               >
-                <div className="min-w-0 pr-2">
-                  <h4 className="text-sm font-bold text-[#0F172A] truncate">{ex.name}</h4>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#008B8E] bg-[#008B8E]/10 px-1.5 py-0.2 rounded border border-[#008B8E]/20">
+                <div className="min-w-0 flex-1 pr-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] leading-snug break-words">{ex.name}</h4>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] font-medium">
+                    <span className="uppercase font-bold text-[#008B8E] bg-[#008B8E]/8 px-1.5 py-0.5 rounded border border-[#008B8E]/20">
                       {ex.primaryMuscle}
                     </span>
-                    <span className="text-xs text-[#64748B] capitalize">
-                      {ex.equipment} • {ex.defaultSets} sets × {ex.defaultReps} reps
+                    {ex.equipment && ex.equipment !== 'other' && (
+                      <span className="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
+                        {ex.equipment.replace('_', ' ')}
+                      </span>
+                    )}
+                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
+                      {ex.defaultSets} sets × {ex.defaultReps} reps
                     </span>
+                    {ex.isCustom && (
+                      <span className="text-[#008B8E] font-extrabold uppercase text-[9px] tracking-wider bg-[#008B8E]/12 px-1.5 py-0.5 rounded border border-[#008B8E]/25 shrink-0">
+                        CUSTOM
+                      </span>
+                    )}
                   </div>
                 </div>
 
