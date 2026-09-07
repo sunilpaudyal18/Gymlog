@@ -81,6 +81,11 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((cache) => {
               cache.put('/index.html', copy);
             });
+            return networkResponse;
+          }
+          // Server returned 404 on deep link navigation: fallback to cached index.html
+          if (networkResponse && networkResponse.status === 404) {
+            return caches.match('/index.html').then((cached) => cached || networkResponse);
           }
           return networkResponse;
         })
