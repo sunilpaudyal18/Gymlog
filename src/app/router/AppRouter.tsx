@@ -48,7 +48,8 @@ export const AppRouter: React.FC = () => {
           <Route path="/workout-complete" element={<WorkoutCompleteScreen />} />
 
           {/* Analytics, History, Profile & Settings */}
-          <Route path="/progress" element={<ProgressScreen />} />
+          {/* <Route path="/progress" element={<ProgressScreen />} /> */}
+          <Route path="/progress" element={<Navigate to="/" replace />} />
           <Route path="/history" element={<HistoryScreen />} />
           <Route path="/history/:sessionId" element={<HistoryDetailScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />

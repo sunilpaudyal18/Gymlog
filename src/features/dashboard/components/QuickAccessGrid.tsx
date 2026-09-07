@@ -19,12 +19,12 @@ export const QuickAccessGrid: React.FC = () => {
       icon: Dumbbell,
       path: '/exercises',
     },
-    {
-      id: 'progress',
-      label: 'Progress',
-      icon: TrendingUp,
-      path: '/progress',
-    },
+    // {
+    //   id: 'progress',
+    //   label: 'Progress',
+    //   icon: TrendingUp,
+    //   path: '/progress',
+    // },
     {
       id: 'history',
       label: 'History',
@@ -40,8 +40,8 @@ export const QuickAccessGrid: React.FC = () => {
         Quick Access
       </h3>
 
-      {/* 2. Glass Grid 4-Column Structure */}
-      <div className="grid grid-cols-4 gap-2">
+      {/* 2. Glass Grid 3-Column Structure */}
+      <div className="grid grid-cols-3 gap-2">
         {items.map((item) => {
           const Icon = item.icon;
           const isHovered = hoveredId === item.id;

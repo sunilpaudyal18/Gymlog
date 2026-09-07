@@ -38,7 +38,8 @@ export const DashboardScreen: React.FC = () => {
             routine={scheduledRoutine}
             isCompletedToday={isCompletedToday}
           />
-          <WeeklyProgress />
+          {/* Weekly Progress (Hidden for now; available for future use) */}
+          {/* <WeeklyProgress /> */}
         </div>
 
         {/* Right Secondary Column: Quick Access & Stats */}

@@ -377,7 +377,13 @@ export const WeeklyPlannerScreen: React.FC = () => {
 
                       {/* Target Muscle Focus Tags with signature electric teal accents */}
                       <div className="flex flex-wrap gap-1 mt-1.5">
-                        {routine.targetMuscles?.map((muscle) => (
+                        {Array.from(
+                          new Set(
+                            (routine.targetMuscles || []).map((m) =>
+                              m === 'glutes' || m === 'calves' ? 'legs' : m
+                            )
+                          )
+                        ).map((muscle) => (
                           <span
                             key={muscle}
                             className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#00A3A6]/12 text-[#00A3A6] border border-[#00A3A6]/25"

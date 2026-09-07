@@ -9,6 +9,8 @@ import {
   Coffee,
   CheckCircle2,
   Filter,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { MuscleGroup, Routine, RoutineExercise, Exercise } from '../../../types';
 import { useRoutineStore } from '../../../stores/useRoutineStore';
@@ -23,6 +25,7 @@ interface DayEditorDrawerProps {
   onSaved?: () => void;
 }
 
+// 1. STRICT UNIFIED MUSCLE TAXONOMY (Glutes permanently consolidated into Legs)
 const MUSCLE_PILLS: { id: MuscleGroup; label: string }[] = [
   { id: 'chest', label: 'Chest' },
   { id: 'back', label: 'Back' },
@@ -31,9 +34,14 @@ const MUSCLE_PILLS: { id: MuscleGroup; label: string }[] = [
   { id: 'biceps', label: 'Biceps' },
   { id: 'triceps', label: 'Triceps' },
   { id: 'abs', label: 'Abs' },
-  { id: 'glutes', label: 'Glutes' },
   { id: 'forearms', label: 'Forearms' },
 ];
+
+// Helper to normalize any muscle taxonomy to core 8 groups
+export const normalizeMuscle = (muscle: string | MuscleGroup): string => {
+  if (muscle === 'glutes' || muscle === 'calves') return 'legs';
+  return muscle;
+};
 
 export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   isOpen,
@@ -47,12 +55,17 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
 
   const dayName = DAY_NAMES[dayIndex] || 'Day';
 
+  // Normalize initial routine's target muscles (mapping glutes to legs and deduplicating)
+  const normalizedInitialMuscles = useMemo(() => {
+    const raw = initialRoutine?.targetMuscles || ['chest', 'triceps'];
+    const mapped = raw.map((m) => (m === 'glutes' || m === 'calves' ? 'legs' : m));
+    return Array.from(new Set(mapped)) as MuscleGroup[];
+  }, [initialRoutine]);
+
   // Local Form State
   const [isRestDay, setIsRestDay] = useState(initialRoutine === null);
   const [routineName, setRoutineName] = useState(initialRoutine?.name || `${dayName} Workout`);
-  const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>(
-    initialRoutine?.targetMuscles || ['chest', 'triceps']
-  );
+  const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>(normalizedInitialMuscles);
   const [selectedExercises, setSelectedExercises] = useState<RoutineExercise[]>(
     initialRoutine?.exercises || []
   );
@@ -62,9 +75,11 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
   const [filterScope, setFilterScope] = useState<'target_muscles' | 'all'>('target_muscles');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Inline Custom Exercise Creation State
+  // Inline Custom Exercise Creation State (Uncontaminated custom tags)
   const [customExerciseName, setCustomExerciseName] = useState('');
-  const [customMuscle, setCustomMuscle] = useState<MuscleGroup>(selectedMuscles[0] || 'chest');
+  const [customMuscle, setCustomMuscle] = useState<MuscleGroup>(
+    selectedMuscles[0] || 'chest'
+  );
   const [customAddedFeedback, setCustomAddedFeedback] = useState<string | null>(null);
 
   // Keep custom muscle category synced with active muscles if not manually set
@@ -79,7 +94,9 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     if (initialRoutine) {
       setIsRestDay(false);
       setRoutineName(initialRoutine.name);
-      setSelectedMuscles(initialRoutine.targetMuscles || ['chest']);
+      const raw = initialRoutine.targetMuscles || ['chest'];
+      const mapped = raw.map((m) => (m === 'glutes' || m === 'calves' ? 'legs' : m));
+      setSelectedMuscles(Array.from(new Set(mapped)) as MuscleGroup[]);
       setSelectedExercises(initialRoutine.exercises || []);
     } else {
       setIsRestDay(true);
@@ -94,26 +111,28 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setCustomAddedFeedback(null);
   }, [dayIndex, initialRoutine, isOpen, dayName]);
 
-  // SMART AUTO-FILTERING: Filter exercise catalog dynamically based on active selected target muscles
+  // SMART AUTO-FILTERING: Filter catalog dynamically (Glutes automatically rolled under Legs)
   const filteredCatalog = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
     return exercises.filter((ex) => {
-      // 1. Text search matching across name, muscle, equipment, and aliases
+      const normPrimary = normalizeMuscle(ex.primaryMuscle);
+
+      // 1. Text search matching across name, primaryMuscle, equipment, aliases
       const matchesSearch =
         !q ||
         ex.name.toLowerCase().includes(q) ||
-        ex.primaryMuscle.toLowerCase().includes(q) ||
-        ex.equipment.toLowerCase().includes(q) ||
+        normPrimary.toLowerCase().includes(q) ||
+        (ex.equipment && ex.equipment !== 'other' && ex.equipment.toLowerCase().includes(q)) ||
         ex.aliases?.some((a) => a.toLowerCase().includes(q));
 
       if (!matchesSearch) return false;
 
-      // 2. Dynamic Target Muscle auto-filtering
+      // 2. Strict Dynamic Target Muscle auto-filtering
       if (filterScope === 'target_muscles' && selectedMuscles.length > 0) {
-        const matchesPrimary = selectedMuscles.includes(ex.primaryMuscle);
+        const matchesPrimary = selectedMuscles.includes(normPrimary as MuscleGroup);
         const matchesSecondary = ex.secondaryMuscles?.some((sm) =>
-          selectedMuscles.includes(sm)
+          selectedMuscles.includes(normalizeMuscle(sm) as MuscleGroup)
         );
         return matchesPrimary || matchesSecondary;
       }
@@ -124,14 +143,14 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
 
   // Toggle muscle selection pill
   const toggleMuscle = (muscle: MuscleGroup) => {
-    if (selectedMuscles.includes(muscle)) {
+    const norm = normalizeMuscle(muscle) as MuscleGroup;
+    if (selectedMuscles.includes(norm)) {
       if (selectedMuscles.length > 1) {
-        setSelectedMuscles(selectedMuscles.filter((m) => m !== muscle));
+        setSelectedMuscles(selectedMuscles.filter((m) => m !== norm));
       }
     } else {
-      setSelectedMuscles([...selectedMuscles, muscle]);
+      setSelectedMuscles([...selectedMuscles, norm]);
     }
-    // Automatically keep filter focused on active target muscles
     setFilterScope('target_muscles');
   };
 
@@ -148,12 +167,13 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
           .map((item, idx) => ({ ...item, order: idx + 1 }))
       );
     } else {
+      const normMuscle = normalizeMuscle(ex.primaryMuscle) as MuscleGroup;
       const newRoutineEx: RoutineExercise = {
         id: `re-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         exerciseId: ex.id,
         exerciseName: ex.name,
-        muscleGroup: ex.primaryMuscle,
-        equipment: ex.equipment,
+        muscleGroup: normMuscle,
+        equipment: ex.isCustom ? 'other' : ex.equipment,
         targetSets: ex.defaultSets || 3,
         targetReps: ex.defaultReps || '8-12',
         targetWeightKg: ex.defaultWeightKg || 20,
@@ -164,20 +184,34 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     }
   };
 
-  // Instant Inline Custom Exercise Creator
+  // Exercise Sequence Reordering System: Effortlessly swap positions with up/down arrows
+  const moveExercise = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= selectedExercises.length) return;
+
+    setSelectedExercises((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated.map((item, idx) => ({ ...item, order: idx + 1 }));
+    });
+  };
+
+  // Instant Inline Custom Exercise Creator (Uncontaminated: adopts only selected muscle)
   const handleAddCustomExercise = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = customExerciseName.trim();
     if (!trimmed) return;
 
     const newId = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const targetMuscle = customMuscle || selectedMuscles[0] || 'chest';
+    const targetMuscle = normalizeMuscle(customMuscle || selectedMuscles[0] || 'chest') as MuscleGroup;
 
     const newCustomEx: Exercise = {
       id: newId,
       name: trimmed,
       primaryMuscle: targetMuscle,
-      equipment: 'dumbbells',
+      equipment: 'other', // Clean uncontaminated tag without forcing unwanted "Dumbbells"
       category: 'compound',
       defaultSets: 3,
       defaultReps: '8-12',
@@ -186,7 +220,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
       isCustom: true,
     };
 
-    // 1. Instantly inject into global exercise store & persistent storage
+    // 1. Instantly inject into global exercise store
     addExercise(newCustomEx);
 
     // 2. Instantly inject into current day's routine
@@ -195,7 +229,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
       exerciseId: newCustomEx.id,
       exerciseName: newCustomEx.name,
       muscleGroup: newCustomEx.primaryMuscle,
-      equipment: newCustomEx.equipment,
+      equipment: 'other',
       targetSets: 3,
       targetReps: '8-12',
       targetWeightKg: 20,
@@ -206,6 +240,18 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
     setSelectedExercises((prev) => [...prev, newRoutineEx]);
     setCustomExerciseName('');
     setCustomAddedFeedback(`Added "${trimmed}" to routine!`);
+
+    // Direct synchronous localStorage snapshot for immediate offline persistence
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const storedCustom = JSON.parse(localStorage.getItem('gym_user_custom_exercises') || '[]');
+        localStorage.setItem('gym_user_custom_exercises', JSON.stringify([newCustomEx, ...storedCustom]));
+        localStorage.setItem('gym_last_offline_sync', String(Date.now()));
+      }
+    } catch (err) {
+      console.warn('Direct offline backup note', err);
+    }
+
     setTimeout(() => setCustomAddedFeedback(null), 3000);
   };
 
@@ -331,7 +377,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
           </button>
         </div>
 
-        {/* 2. FLUID SCROLLABLE BODY (Touch-optimized scroll container) */}
+        {/* 2. FLUID SCROLLABLE BODY (Touch-optimized scroll container, no nested scroll traps) */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5">
           {/* Day Mode Switcher (Active Training Day vs Full Rest Day) */}
           <div className="bg-[#E2E8F0]/70 p-1.5 rounded-2xl border border-[#CBD5E1]/70 flex items-center gap-1.5 shadow-2xs">
@@ -416,7 +462,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                 />
               </div>
 
-              {/* Target Muscles Selector (Pill Selection with signature Electric Teal) */}
+              {/* Target Muscles Selector (Strict 8 Core Groups - Glutes mapped into Legs) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
@@ -449,7 +495,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Assigned Movements List */}
+              {/* Assigned Movements List with Sequence Reordering (↑ / ↓) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
@@ -474,71 +520,107 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {selectedExercises.map((re, idx) => (
-                      <div
-                        key={re.id}
-                        className="bg-white border border-[#CBD5E1] rounded-2xl p-3 flex items-center justify-between gap-2 shadow-2xs hover:border-[#00A3A6]/50 transition-all min-h-[56px]"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-6 h-6 rounded-full bg-[#F1F5F9] text-[#64748B] text-xs font-extrabold flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <div className="min-w-0">
-                            <span className="text-xs sm:text-sm font-bold text-[#0F172A] block truncate">
-                              {re.exerciseName}
-                            </span>
-                            <span className="text-[10px] text-[#94A3B8] uppercase font-semibold">
-                              {re.equipment} • {re.muscleGroup}
-                            </span>
-                          </div>
-                        </div>
+                  <div className="space-y-2">
+                    {selectedExercises.map((re, idx) => {
+                      const displayMuscle = normalizeMuscle(re.muscleGroup);
+                      return (
+                        <div
+                          key={re.id}
+                          className="bg-white border border-[#CBD5E1] rounded-2xl p-3 flex items-center justify-between gap-2 shadow-2xs hover:border-[#00A3A6]/50 transition-all min-h-[56px]"
+                        >
+                          {/* Reorder Arrows + Order Number + Title */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Sequence Shifting Controls (↑ / ↓) */}
+                            <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => moveExercise(idx, 'up')}
+                                disabled={idx === 0}
+                                className="w-6 h-5 flex items-center justify-center rounded bg-[#F1F5F9] text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F1F5F9] disabled:hover:text-[#64748B] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/60"
+                                title="Move exercise up"
+                                aria-label="Move exercise up"
+                              >
+                                <ArrowUp size={11} className="stroke-[2.5]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveExercise(idx, 'down')}
+                                disabled={idx === selectedExercises.length - 1}
+                                className="w-6 h-5 flex items-center justify-center rounded bg-[#F1F5F9] text-[#64748B] hover:text-[#00A3A6] hover:bg-[#00A3A6]/10 disabled:opacity-20 disabled:hover:bg-[#F1F5F9] disabled:hover:text-[#64748B] disabled:cursor-not-allowed transition-all cursor-pointer border border-[#CBD5E1]/60"
+                                title="Move exercise down"
+                                aria-label="Move exercise down"
+                              >
+                                <ArrowDown size={11} className="stroke-[2.5]" />
+                              </button>
+                            </div>
 
-                        {/* Sets / Reps Stepper Controls */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <div className="flex items-center border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] overflow-hidden">
+                            <span className="w-6 h-6 rounded-full bg-[#F1F5F9] text-[#64748B] text-xs font-extrabold flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <span className="text-xs sm:text-sm font-bold text-[#0F172A] block truncate">
+                                {re.exerciseName}
+                              </span>
+                              <div className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] font-semibold mt-0.5">
+                                <span className="uppercase font-bold text-[#00A3A6]">
+                                  {displayMuscle}
+                                </span>
+                                {re.equipment && re.equipment !== 'other' && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="capitalize">{re.equipment.replace('_', ' ')}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sets / Reps Stepper Controls */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => updateExerciseSets(re.id, -1)}
+                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
+                                aria-label="Decrease sets"
+                              >
+                                -
+                              </button>
+                              <span className="px-1.5 text-xs font-bold text-[#0F172A] min-w-[28px] text-center">
+                                {re.targetSets}s
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateExerciseSets(re.id, 1)}
+                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
+                                aria-label="Increase sets"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <input
+                              type="text"
+                              value={re.targetReps}
+                              onChange={(e) => updateExerciseReps(re.id, e.target.value)}
+                              placeholder="8-12"
+                              className="w-14 h-8 text-center text-xs font-bold text-[#0F172A] border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] outline-none focus:border-[#00A3A6]"
+                              title="Target repetitions"
+                            />
+
                             <button
                               type="button"
-                              onClick={() => updateExerciseSets(re.id, -1)}
-                              className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
-                              aria-label="Decrease sets"
+                              onClick={() => removeExercise(re.id)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
+                              title="Remove exercise"
+                              aria-label="Remove exercise"
                             >
-                              -
-                            </button>
-                            <span className="px-1.5 text-xs font-bold text-[#0F172A] min-w-[28px] text-center">
-                              {re.targetSets}s
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateExerciseSets(re.id, 1)}
-                              className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] cursor-pointer"
-                              aria-label="Increase sets"
-                            >
-                              +
+                              <Trash2 size={16} />
                             </button>
                           </div>
-
-                          <input
-                            type="text"
-                            value={re.targetReps}
-                            onChange={(e) => updateExerciseReps(re.id, e.target.value)}
-                            placeholder="8-12"
-                            className="w-14 h-8 text-center text-xs font-bold text-[#0F172A] border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] outline-none focus:border-[#00A3A6]"
-                            title="Target repetitions"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => removeExercise(re.id)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors cursor-pointer"
-                            title="Remove exercise"
-                            aria-label="Remove exercise"
-                          >
-                            <Trash2 size={16} />
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -602,7 +684,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                   )}
                 </div>
 
-                {/* INLINE CUSTOM EXERCISE CREATOR ("Add Custom" persistent quick-add banner) */}
+                {/* INLINE CUSTOM EXERCISE CREATOR (Uncontaminated: Binds ONLY to chosen muscle) */}
                 <form
                   onSubmit={handleAddCustomExercise}
                   className="bg-white rounded-2xl border border-[#CBD5E1] p-3 shadow-2xs space-y-2.5 transition-all focus-within:border-[#00A3A6] focus-within:ring-2 focus-within:ring-[#00A3A6]/20"
@@ -628,13 +710,13 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                     </button>
                   </div>
 
-                  {/* Muscle Category Selector & Instant Feedback for Custom Movement */}
+                  {/* Muscle Category Selector & Instant Feedback (Only Core 8 Groups, No Unwanted Equipment) */}
                   <div className="flex items-center justify-between text-[11px] pt-2 border-t border-[#F1F5F9]">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[#64748B] font-semibold">Muscle group:</span>
+                      <span className="text-[#64748B] font-semibold">Muscle category:</span>
                       <select
                         value={customMuscle}
-                        onChange={(e) => setCustomMuscle(e.target.value as MuscleGroup)}
+                        onChange={(e) => setCustomMuscle(normalizeMuscle(e.target.value) as MuscleGroup)}
                         className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-[#0F172A] font-bold text-xs outline-none cursor-pointer"
                       >
                         {MUSCLE_PILLS.map((m) => (
@@ -652,14 +734,14 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                       </span>
                     ) : (
                       <span className="text-[#94A3B8] font-medium hidden sm:inline">
-                        Instantly injects into routine & library
+                        Pure muscle binding • Offline persistent
                       </span>
                     )}
                   </div>
                 </form>
 
                 {/* Fluid Exercise Catalog List with Clean 56px+ Touch Targets & Electric Teal Feedback */}
-                <div className="border border-[#CBD5E1] rounded-2xl bg-white divide-y divide-[#F1F5F9] max-h-64 sm:max-h-72 overflow-y-auto shadow-2xs">
+                <div className="border border-[#CBD5E1] rounded-2xl bg-white divide-y divide-[#F1F5F9] max-h-72 sm:max-h-80 overflow-y-auto shadow-2xs">
                   {filteredCatalog.length === 0 ? (
                     <div className="p-6 text-center text-xs text-[#94A3B8] space-y-2">
                       <p className="font-semibold text-[#64748B]">
@@ -684,6 +766,7 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                       const isSelected = selectedExercises.some(
                         (re) => re.exerciseId === ex.id || re.id === ex.id
                       );
+                      const displayMuscle = normalizeMuscle(ex.primaryMuscle);
 
                       return (
                         <div
@@ -715,16 +798,20 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                               </span>
                               <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#94A3B8] font-semibold mt-0.5">
                                 <span className="uppercase font-bold text-[#00A3A6]">
-                                  {ex.primaryMuscle}
+                                  {displayMuscle}
                                 </span>
-                                <span>•</span>
-                                <span className="capitalize">{ex.equipment.replace('_', ' ')}</span>
+                                {ex.equipment && ex.equipment !== 'other' && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="capitalize">{ex.equipment.replace('_', ' ')}</span>
+                                  </>
+                                )}
                                 <span>•</span>
                                 <span>{ex.defaultSets || 3} sets</span>
                                 {ex.isCustom && (
                                   <>
                                     <span>•</span>
-                                    <span className="text-[#D96B27] font-bold uppercase text-[9px]">Custom</span>
+                                    <span className="text-[#00A3A6] font-bold uppercase text-[9px] bg-[#00A3A6]/10 px-1 py-0.2 rounded">Custom</span>
                                   </>
                                 )}
                               </div>

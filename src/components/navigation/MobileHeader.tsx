@@ -30,7 +30,7 @@ export const MobileHeader: React.FC = () => {
         />
 
         {/* Quick Context Action / Status */}
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           {isLiveWorkout ? (
             <button
               type="button"
@@ -49,7 +49,7 @@ export const MobileHeader: React.FC = () => {
               <span className="tracking-wider uppercase">ATHLETE</span>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </header>
   );

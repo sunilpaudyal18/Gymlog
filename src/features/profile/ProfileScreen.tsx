@@ -224,8 +224,9 @@ export const ProfileScreen: React.FC = () => {
 
       {/* 2-Column Responsive Split on Tablet/Desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Progress Performance Overview */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* Progress & Performance Overview (Hidden for now; available for future use) */}
+        {false && (
+          <div className="lg:col-span-5 space-y-4">
           <div
             className="bg-white/85 border border-[#CBD5E1]/70 hover:border-[#008B8E]/50 rounded-3xl p-5 shadow-sm space-y-4 transition-all duration-200 group relative backdrop-blur-md select-none"
             style={{
@@ -440,9 +441,10 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Right Column: Systematic Settings & Preferences Menu */}
-        <div className="lg:col-span-7 space-y-2">
+        <div className="lg:col-span-12 max-w-3xl mx-auto w-full space-y-2">
           <span className="text-xs font-bold uppercase tracking-wider text-[#475569] px-1">
             Settings & Preferences
           </span>
@@ -483,8 +485,8 @@ export const ProfileScreen: React.FC = () => {
 
       {/* MODALS */}
 
-      {/* Progress Detail Modal */}
-      {showProgressModal && (
+      {/* Progress Detail Modal (Hidden for now; available for future use) */}
+      {false && showProgressModal && (
         <ProgressModal
           isOpen={showProgressModal}
           onClose={() => setShowProgressModal(false)}

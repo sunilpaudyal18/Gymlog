@@ -52,12 +52,12 @@ export const DesktopSidebar: React.FC = () => {
       icon: History,
       exact: false,
     },
-    {
-      path: '/progress',
-      label: 'Progress & Analytics',
-      icon: TrendingUp,
-      exact: false,
-    },
+    // {
+    //   path: '/progress',
+    //   label: 'Progress & Analytics',
+    //   icon: TrendingUp,
+    //   exact: false,
+    // },
     {
       path: '/profile',
       label: 'Profile & Goals',
