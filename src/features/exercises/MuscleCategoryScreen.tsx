@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Search, Check, Dumbbell, Filter, Sparkles, Target } from 'lucide-react';
+import { ArrowLeft, Search, Check, Dumbbell, Sparkles, Target } from 'lucide-react';
 import { MUSCLE_GROUPS_META } from '../../constants/exercises';
 import { useExerciseStore } from '../../stores/useExerciseStore';
 import { useRoutineStore } from '../../stores/useRoutineStore';
@@ -14,7 +14,6 @@ export const MuscleCategoryScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const routineId = searchParams.get('routineId');
-  const equipmentParam = searchParams.get('equipment') || 'all';
   const targetParam = searchParams.get('target') || 'all';
 
   const {
@@ -25,14 +24,12 @@ export const MuscleCategoryScreen: React.FC = () => {
     multiSelectedIds,
     toggleMultiSelect,
     clearMultiSelect,
-    getEquipmentCategoriesForMuscle,
     deleteExercise,
   } = useExerciseStore();
 
   const { routines, addExerciseToRoutine } = useRoutineStore();
 
   const [localSearch, setLocalSearch] = useState('');
-  const [selectedEquipment, setSelectedEquipment] = useState<string>(equipmentParam);
   const [selectedSubTarget, setSelectedSubTarget] = useState<string>(targetParam);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 
@@ -48,24 +45,10 @@ export const MuscleCategoryScreen: React.FC = () => {
 
   // Sync state with URL params
   useEffect(() => {
-    if (equipmentParam !== selectedEquipment) {
-      setSelectedEquipment(equipmentParam);
-    }
     if (targetParam !== selectedSubTarget) {
       setSelectedSubTarget(targetParam);
     }
-  }, [equipmentParam, targetParam]);
-
-  const handleEquipmentChange = (newEquip: string) => {
-    setSelectedEquipment(newEquip);
-    const newParams = new URLSearchParams(searchParams);
-    if (newEquip === 'all') {
-      newParams.delete('equipment');
-    } else {
-      newParams.set('equipment', newEquip);
-    }
-    setSearchParams(newParams, { replace: true });
-  };
+  }, [targetParam]);
 
   const handleSubTargetChange = (newTarget: string) => {
     setSelectedSubTarget(newTarget);
@@ -109,9 +92,9 @@ export const MuscleCategoryScreen: React.FC = () => {
         { id: 'all', label: 'All Legs' },
         { id: 'quads', label: 'Quadriceps' },
         { id: 'hamstrings', label: 'Hamstrings' },
-        { id: 'adductors', label: 'Adductors' },
-        { id: 'abductors', label: 'Abductors' },
-        { id: 'tibialis', label: 'Tibialis / Shin' },
+        { id: 'glutes', label: 'Glutes & Hips' },
+        { id: 'calves', label: 'Calves & Tibialis' },
+        { id: 'adductors', label: 'Adductors & Abductors' },
       ];
     }
     if (groupMeta.id === 'abs') {
@@ -131,10 +114,29 @@ export const MuscleCategoryScreen: React.FC = () => {
         { id: 'all', label: 'All Forearms' },
         { id: 'wrist_flexion', label: 'Wrist Flexion' },
         { id: 'wrist_extension', label: 'Wrist Extension' },
-        { id: 'brachioradialis', label: 'Brachioradialis' },
+        { id: 'brachioradialis', label: 'Brachioradialis & Reverse' },
         { id: 'grip_hangs', label: 'Grip & Hangs' },
-        { id: 'carries', label: 'Carries' },
-        { id: 'rotation', label: 'Pronation / Supination' },
+        { id: 'carries', label: 'Loaded Carries' },
+        { id: 'rotation', label: 'Pronation, Supination & Levers' },
+      ];
+    }
+    if (groupMeta.id === 'biceps') {
+      return [
+        { id: 'all', label: 'All Biceps' },
+        { id: 'long_head', label: 'Long Head (Peak)' },
+        { id: 'short_head', label: 'Short Head (Inner)' },
+        { id: 'brachialis', label: 'Brachialis & Forearms' },
+        { id: 'compound', label: 'Compound Pulls' },
+      ];
+    }
+    if (groupMeta.id === 'shoulders') {
+      return [
+        { id: 'all', label: 'All Shoulders' },
+        { id: 'overhead_press', label: 'Overhead Press' },
+        { id: 'side_delts', label: 'Lateral Delts' },
+        { id: 'rear_delts', label: 'Rear Delts' },
+        { id: 'front_delts', label: 'Front Delts' },
+        { id: 'rotator_cuff', label: 'Rotator Cuff' },
       ];
     }
     if (groupMeta.id === 'chest') {
@@ -147,11 +149,6 @@ export const MuscleCategoryScreen: React.FC = () => {
     }
     return [];
   }, [groupMeta.id]);
-
-  // Dynamically generate available equipment categories with live exercise counts
-  const dynamicEquipmentOptions = useMemo(() => {
-    return getEquipmentCategoriesForMuscle(groupMeta.id);
-  }, [groupMeta.id, getEquipmentCategoriesForMuscle, exercises]);
 
   // Filter exercises belonging to this muscle category
   const categoryExercises = useMemo(() => {
@@ -188,13 +185,19 @@ export const MuscleCategoryScreen: React.FC = () => {
           const isLower = terms.includes('lower back') || terms.includes('erectors') || terms.includes('deadlift') || terms.includes('hinge') || terms.includes('hyperextension') || name.includes('deadlift') || name.includes('good morning') || name.includes('hyperextension') || name.includes('back extension');
           if (!isLower) return false;
         } else if (selectedSubTarget === 'quads') {
-          const isQuad = terms.includes('quads') || terms.includes('squat') || terms.includes('leg press') || terms.includes('hack squat') || terms.includes('leg extension') || name.includes('squat') || name.includes('leg press') || name.includes('extension') || name.includes('lunge') || name.includes('sissy');
+          const isQuad = terms.includes('quads') || terms.includes('squat') || terms.includes('leg press') || terms.includes('hack squat') || terms.includes('leg extension') || name.includes('squat') || name.includes('leg press') || name.includes('extension') || name.includes('lunge') || name.includes('step-up') || name.includes('sissy') || name.includes('skater') || name.includes('pistol');
           if (!isQuad) return false;
         } else if (selectedSubTarget === 'hamstrings') {
-          const isHam = terms.includes('hamstrings') || terms.includes('rdl') || terms.includes('leg curl') || terms.includes('nordic') || name.includes('curl') || name.includes('rdl') || name.includes('deadlift') || name.includes('nordic');
+          const isHam = terms.includes('hamstrings') || terms.includes('rdl') || terms.includes('leg curl') || terms.includes('nordic') || terms.includes('good morning') || name.includes('curl') || name.includes('rdl') || name.includes('deadlift') || name.includes('good morning') || name.includes('nordic');
           if (!isHam) return false;
+        } else if (selectedSubTarget === 'glutes') {
+          const isGlute = terms.includes('glutes') || terms.includes('hip thrust') || terms.includes('glute bridge') || terms.includes('kickback') || name.includes('hip thrust') || name.includes('glute') || name.includes('kickback') || name.includes('monster walk') || name.includes('clamshell') || name.includes('curtsy') || sec.includes('glutes');
+          if (!isGlute) return false;
+        } else if (selectedSubTarget === 'calves') {
+          const isCalf = terms.includes('calves') || terms.includes('tibialis') || terms.includes('soleus') || terms.includes('gastrocnemius') || name.includes('calf') || name.includes('soleus') || name.includes('tibialis');
+          if (!isCalf) return false;
         } else if (selectedSubTarget === 'adductors') {
-          const isAdd = terms.includes('adductors') || terms.includes('inner thigh') || terms.includes('copenhagen') || name.includes('adduction') || name.includes('copenhagen') || name.includes('sumo');
+          const isAdd = terms.includes('adductors') || terms.includes('abductors') || terms.includes('inner thigh') || terms.includes('outer thigh') || name.includes('adduction') || name.includes('abduction') || name.includes('sumo') || name.includes('cossack') || name.includes('lateral lunge');
           if (!isAdd) return false;
         } else if (selectedSubTarget === 'abductors') {
           const isAbd = terms.includes('abductors') || terms.includes('outer thigh') || name.includes('abduction');
@@ -203,40 +206,40 @@ export const MuscleCategoryScreen: React.FC = () => {
           const isTib = terms.includes('tibialis') || terms.includes('shin') || name.includes('tibialis');
           if (!isTib) return false;
         } else if (selectedSubTarget === 'spinal_flexion') {
-          const isFlex = terms.includes('spinal flexion') || name.includes('crunch') || name.includes('sit-up') || name.includes('v-up');
+          const isFlex = terms.includes('spinal flexion') || terms.includes('flexion') || name.includes('crunch') || name.includes('sit-up') || name.includes('v-up') || name.includes('jackknife') || name.includes('toe touches') || name.includes('in-and-out') || name.includes('pike') || name.includes('tuck');
           if (!isFlex) return false;
         } else if (selectedSubTarget === 'leg_raises') {
-          const isLegR = terms.includes('lower abs') || terms.includes('hanging leg raise') || name.includes('raise') || name.includes('reverse crunch');
+          const isLegR = terms.includes('lower abs') || terms.includes('leg raise') || terms.includes('knee raise') || name.includes('raise') || name.includes('kick') || name.includes('climber') || name.includes('reverse crunch');
           if (!isLegR) return false;
         } else if (selectedSubTarget === 'anti_extension') {
-          const isAntiExt = terms.includes('anti-extension') || terms.includes('anti extension') || name.includes('plank') || name.includes('rollout') || name.includes('dead bug') || name.includes('hollow');
+          const isAntiExt = terms.includes('anti-extension') || terms.includes('anti extension') || name.includes('plank') || name.includes('rollout') || name.includes('dead bug') || name.includes('hollow') || name.includes('dragon flag');
           if (!isAntiExt) return false;
         } else if (selectedSubTarget === 'obliques') {
-          const isObl = terms.includes('obliques') || terms.includes('rotation') || name.includes('woodchop') || name.includes('twist') || name.includes('bicycle') || name.includes('side plank');
+          const isObl = terms.includes('obliques') || terms.includes('rotation') || name.includes('woodchop') || name.includes('twist') || name.includes('wiper') || name.includes('side') || name.includes('bicycle') || name.includes('heel touch') || name.includes('spell caster') || name.includes('landmine');
           if (!isObl) return false;
         } else if (selectedSubTarget === 'anti_rotation') {
-          const isAntiRot = terms.includes('anti rotation') || terms.includes('anti-rotation') || name.includes('pallof');
+          const isAntiRot = terms.includes('anti rotation') || terms.includes('anti-rotation') || name.includes('pallof') || name.includes('bird-dog') || name.includes('halo');
           if (!isAntiRot) return false;
         } else if (selectedSubTarget === 'carries') {
-          const isCarry = terms.includes('carry') || name.includes('carry') || name.includes('walk') || name.includes('farmers');
+          const isCarry = terms.includes('carry') || terms.includes('isometric') || name.includes('carry') || name.includes('walk') || name.includes('hold') || name.includes('l-sit') || name.includes('windmill') || name.includes('get-up');
           if (!isCarry) return false;
         } else if (selectedSubTarget === 'vacuum') {
           const isVac = terms.includes('vacuum') || name.includes('vacuum');
           if (!isVac) return false;
         } else if (selectedSubTarget === 'wrist_flexion') {
-          const isFlex = terms.includes('forearm flexors') || (name.includes('wrist curl') && !name.includes('reverse'));
+          const isFlex = terms.includes('forearm flexors') || terms.includes('wrist flexion') || (name.includes('wrist curl') && !name.includes('reverse')) || name.includes('radial deviation') || name.includes('ulnar deviation') || name.includes('wrist roller');
           if (!isFlex) return false;
         } else if (selectedSubTarget === 'wrist_extension') {
-          const isExt = terms.includes('wrist extensors') || name.includes('reverse wrist');
+          const isExt = terms.includes('wrist extensors') || terms.includes('wrist extension') || name.includes('reverse wrist') || name.includes('extension') || name.includes('reverse wrist roller');
           if (!isExt) return false;
         } else if (selectedSubTarget === 'brachioradialis') {
-          const isBrach = terms.includes('brachioradialis') || terms.includes('brachialis') || name.includes('reverse curl') || name.includes('hammer');
+          const isBrach = terms.includes('brachioradialis') || terms.includes('brachialis') || name.includes('reverse curl') || name.includes('reverse grip') || name.includes('hammer') || name.includes('zottman');
           if (!isBrach) return false;
         } else if (selectedSubTarget === 'grip_hangs') {
-          const isGrip = terms.includes('grip strength') || terms.includes('pinch grip') || name.includes('hang') || name.includes('pinch') || name.includes('gripper');
+          const isGrip = terms.includes('grip strength') || terms.includes('pinch grip') || terms.includes('crush grip') || name.includes('hang') || name.includes('pinch') || name.includes('gripper') || name.includes('crusher') || name.includes('fat grip') || name.includes('axle') || name.includes('rice') || name.includes('towel') || name.includes('inverted row') || name.includes('flip');
           if (!isGrip) return false;
         } else if (selectedSubTarget === 'rotation') {
-          const isRot = terms.includes('pronation') || terms.includes('supination') || name.includes('pronation') || name.includes('rotation');
+          const isRot = terms.includes('pronation') || terms.includes('supination') || name.includes('pronation') || name.includes('supination') || name.includes('rotation') || name.includes('lever') || name.includes('twist');
           if (!isRot) return false;
         } else if (selectedSubTarget === 'upper_chest') {
           const isUpper = terms.includes('upper chest') || terms.includes('clavicular') || name.includes('incline');
@@ -247,12 +250,34 @@ export const MuscleCategoryScreen: React.FC = () => {
         } else if (selectedSubTarget === 'mid_chest') {
           const isMid = terms.includes('flat') || terms.includes('mid-chest') || name.includes('flat') || name.includes('bench press');
           if (!isMid) return false;
+        } else if (selectedSubTarget === 'overhead_press') {
+          const isPress = terms.includes('overhead press') || terms.includes('press') || name.includes('press') || name.includes('ohp') || name.includes('push-up');
+          if (!isPress) return false;
+        } else if (selectedSubTarget === 'side_delts') {
+          const isSide = terms.includes('side delts') || terms.includes('lateral deltoid') || name.includes('lateral raise') || name.includes('upright row') || name.includes('lu raise');
+          if (!isSide) return false;
+        } else if (selectedSubTarget === 'rear_delts') {
+          const isRear = terms.includes('rear delts') || terms.includes('posterior deltoid') || name.includes('rear delt') || name.includes('face pull');
+          if (!isRear) return false;
+        } else if (selectedSubTarget === 'front_delts') {
+          const isFront = terms.includes('front delts') || terms.includes('anterior delt') || name.includes('front raise') || name.includes('plate raise') || name.includes('bus driver');
+          if (!isFront) return false;
+        } else if (selectedSubTarget === 'rotator_cuff') {
+          const isRot = terms.includes('rotator cuff') || name.includes('external rotation') || name.includes('cuban') || name.includes('bottoms-up');
+          if (!isRot) return false;
+        } else if (selectedSubTarget === 'long_head') {
+          const isLong = terms.includes('long head') || terms.includes('incline curl') || terms.includes('drag curl') || name.includes('incline') || name.includes('drag');
+          if (!isLong) return false;
+        } else if (selectedSubTarget === 'short_head') {
+          const isShort = terms.includes('short head') || terms.includes('preacher') || terms.includes('spider') || terms.includes('concentration') || name.includes('preacher') || name.includes('spider') || name.includes('concentration') || name.includes('hercules') || name.includes('high cable');
+          if (!isShort) return false;
+        } else if (selectedSubTarget === 'brachialis') {
+          const isBrach = terms.includes('brachialis') || terms.includes('hammer') || terms.includes('reverse') || terms.includes('zottman') || name.includes('hammer') || name.includes('reverse') || name.includes('zottman');
+          if (!isBrach) return false;
+        } else if (selectedSubTarget === 'compound') {
+          const isComp = terms.includes('chin-up') || terms.includes('pulldown') || terms.includes('row') || name.includes('chin-up') || name.includes('pulldown') || name.includes('row');
+          if (!isComp) return false;
         }
-      }
-
-      // Equipment filter
-      if (selectedEquipment !== 'all' && ex.equipment !== selectedEquipment) {
-        return false;
       }
 
       // Local search query
@@ -268,7 +293,7 @@ export const MuscleCategoryScreen: React.FC = () => {
 
       return true;
     });
-  }, [exercises, groupMeta.id, selectedEquipment, selectedSubTarget, localSearch]);
+  }, [exercises, groupMeta.id, selectedSubTarget, localSearch]);
 
   const handleExerciseClick = (ex: Exercise) => {
     navigate(`/exercises/${ex.id}${routineId ? `?routineId=${routineId}` : ''}`);
@@ -397,7 +422,7 @@ export const MuscleCategoryScreen: React.FC = () => {
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder={`Search ${groupMeta.name.toLowerCase()} by name, alias, equipment...`}
+            placeholder={`Search ${groupMeta.name.toLowerCase()} by name or alias...`}
             className="w-full bg-white border border-[#CBD5E1] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#008B8E] shadow-sm font-medium"
           />
           {localSearch && (
@@ -444,53 +469,7 @@ export const MuscleCategoryScreen: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Level 2 & 3: Dynamic Equipment Category Cards / Chips */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#475569] flex items-center gap-1">
-            <Filter size={12} className="text-[#008B8E]" />
-            <span>EQUIPMENT CATEGORY</span>
-          </span>
-          {selectedEquipment !== 'all' && (
-            <button
-              type="button"
-              onClick={() => handleEquipmentChange('all')}
-              className="text-[11px] font-bold text-[#008B8E] hover:underline cursor-pointer"
-            >
-              Show All
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
-          {dynamicEquipmentOptions.map((equip) => {
-            const isSelected = selectedEquipment === equip.id;
-            return (
-              <button
-                key={equip.id}
-                type="button"
-                onClick={() => handleEquipmentChange(equip.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer border shadow-sm flex items-center gap-1.5 active:scale-95 ${
-                  isSelected
-                    ? 'bg-[#008B8E] text-white border-[#008B8E] font-bold shadow-[0_2px_8px_rgba(0,139,142,0.25)]'
-                    : 'bg-white/85 text-[#475569] border-[#CBD5E1] hover:bg-white hover:text-[#0F172A]'
-                }`}
-              >
-                <span>{equip.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#008B8E] font-bold'
-                  }`}
-                >
-                  {equip.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 5. Level 3: Focused Exercise List */}
+      {/* 4. Focused Exercise List */}
       <div className="space-y-3 pt-1 w-full">
         <div className="flex items-center justify-between px-0.5">
           <span className="text-xs font-bold uppercase tracking-wider text-[#475569]">
@@ -512,11 +491,10 @@ export const MuscleCategoryScreen: React.FC = () => {
           <EmptyState
             icon={<Search size={36} />}
             title="No exercises match your filter"
-            description={`No ${groupMeta.name.toLowerCase()} exercises found matching your current search, equipment, or sub-target criteria.`}
+            description={`No ${groupMeta.name.toLowerCase()} exercises found matching your current search or sub-target criteria.`}
             actionLabel="Reset Filters"
             onAction={() => {
               setLocalSearch('');
-              handleEquipmentChange('all');
               handleSubTargetChange('all');
             }}
           />

@@ -312,7 +312,7 @@ export const CreateRoutineScreen: React.FC = () => {
                           {ex.exerciseName}
                         </h4>
                         <span className="text-[11px] text-[#008B8E] font-semibold block capitalize mt-0.5">
-                          {ex.targetSets} sets × {ex.targetReps} reps • {ex.equipment}
+                          {ex.targetSets} sets × {ex.targetReps} reps
                         </span>
                       </div>
                     </div>
@@ -397,11 +397,6 @@ export const CreateRoutineScreen: React.FC = () => {
                     <span className="uppercase font-bold text-[#008B8E] bg-[#008B8E]/8 px-1.5 py-0.5 rounded border border-[#008B8E]/20">
                       {ex.primaryMuscle}
                     </span>
-                    {ex.equipment && ex.equipment !== 'other' && (
-                      <span className="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
-                        {ex.equipment.replace('_', ' ')}
-                      </span>
-                    )}
                     <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
                       {ex.defaultSets} sets × {ex.defaultReps} reps
                     </span>

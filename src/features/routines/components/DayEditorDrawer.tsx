@@ -846,11 +846,6 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
                                   <span className="uppercase font-bold text-[#00A3A6] bg-[#00A3A6]/8 px-1.5 py-0.5 rounded border border-[#00A3A6]/20">
                                     {displayMuscle}
                                   </span>
-                                  {ex.equipment && ex.equipment !== 'other' && (
-                                    <span className="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
-                                      {ex.equipment.replace('_', ' ')}
-                                    </span>
-                                  )}
                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200/60">
                                     {ex.defaultSets || 3} sets
                                   </span>

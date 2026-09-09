@@ -147,13 +147,10 @@ export const useExerciseStore = create<ExerciseState>()(
             return (
               ex.primaryMuscle === 'legs' ||
               ex.primaryMuscle === 'glutes' ||
-              ex.primaryMuscle === 'calves' ||
-              ex.secondaryMuscles?.includes('legs') ||
-              ex.secondaryMuscles?.includes('glutes') ||
-              ex.secondaryMuscles?.includes('calves')
+              ex.primaryMuscle === 'calves'
             );
           }
-          return ex.primaryMuscle === muscle || ex.secondaryMuscles?.includes(muscle);
+          return ex.primaryMuscle === muscle;
         });
 
         const equipmentMap: Record<string, number> = {};
@@ -225,11 +222,8 @@ export const useExerciseStore = create<ExerciseState>()(
               : targetMuscle === 'legs'
               ? ex.primaryMuscle === 'legs' ||
                 ex.primaryMuscle === 'glutes' ||
-                ex.primaryMuscle === 'calves' ||
-                ex.secondaryMuscles?.includes('legs') ||
-                ex.secondaryMuscles?.includes('glutes') ||
-                ex.secondaryMuscles?.includes('calves')
-              : ex.primaryMuscle === targetMuscle || ex.secondaryMuscles?.includes(targetMuscle);
+                ex.primaryMuscle === 'calves'
+              : ex.primaryMuscle === targetMuscle;
 
           const matchEquipment =
             targetEquipment === 'all' || ex.equipment === targetEquipment;

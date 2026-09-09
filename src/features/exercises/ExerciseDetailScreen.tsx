@@ -189,9 +189,6 @@ export const ExerciseDetailScreen: React.FC = () => {
         <span className="text-[11px] font-bold uppercase tracking-wider text-white bg-[#008B8E] px-2.5 py-1 rounded-full shadow-xs">
           {exercise.primaryMuscle}
         </span>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#0F172A] bg-slate-100 border border-[#CBD5E1] px-2.5 py-1 rounded-full capitalize">
-          {exercise.equipment.replace(/_/g, ' ')}
-        </span>
         <span className="text-[11px] font-semibold text-[#475569] bg-white border border-[#CBD5E1] px-2.5 py-1 rounded-full capitalize">
           {exercise.category}
         </span>

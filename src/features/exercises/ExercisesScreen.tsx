@@ -16,6 +16,7 @@ export const ExercisesScreen: React.FC = () => {
   const routineId = searchParams.get('routineId');
 
   const {
+    exercises,
     searchQuery,
     setSearchQuery,
     getFilteredExercises,
@@ -33,6 +34,19 @@ export const ExercisesScreen: React.FC = () => {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 
   const filteredExercises = getFilteredExercises();
+
+  const getExerciseCountForMuscle = (muscleId: MuscleGroup) => {
+    return exercises.filter((ex) => {
+      if (muscleId === 'legs') {
+        return (
+          ex.primaryMuscle === 'legs' ||
+          ex.primaryMuscle === 'glutes' ||
+          ex.primaryMuscle === 'calves'
+        );
+      }
+      return ex.primaryMuscle === muscleId;
+    }).length;
+  };
 
   const handleEditExercise = (ex: Exercise) => {
     setEditingExercise(ex);
@@ -131,7 +145,7 @@ export const ExercisesScreen: React.FC = () => {
         <SearchInput
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by name, muscle, equipment..."
+          placeholder="Search by name or target muscle..."
         />
       </div>
 
@@ -263,7 +277,7 @@ export const ExercisesScreen: React.FC = () => {
                             className="text-[10.5px] font-bold tracking-normal"
                             style={{ color: '#00A3A6' }}
                           >
-                            {group.count} Exercises
+                            {getExerciseCountForMuscle(group.id)} Exercises
                           </span>
                         </div>
 

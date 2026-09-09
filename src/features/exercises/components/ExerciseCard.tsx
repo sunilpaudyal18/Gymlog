@@ -74,11 +74,6 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
             <span className="uppercase font-bold text-[#008B8E] bg-[#008B8E]/8 px-1.5 py-0.5 rounded border border-[#008B8E]/20">
               {exercise.primaryMuscle}
             </span>
-            {exercise.equipment && exercise.equipment !== 'other' && (
-              <span className="bg-[#F1F5F9] px-1.5 py-0.5 rounded border border-[#CBD5E1]/60 text-[#64748B]">
-                {exercise.equipment.replace(/_/g, ' ')}
-              </span>
-            )}
             <span className="bg-[#F1F5F9] px-1.5 py-0.5 rounded border border-[#CBD5E1]/60 text-[#64748B]">
               {exercise.defaultSets} sets × {exercise.defaultReps} reps
             </span>

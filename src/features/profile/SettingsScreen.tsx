@@ -366,7 +366,7 @@ export const SettingsScreen: React.FC = () => {
             {exportSuccess && (
               <div className="p-3 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl flex items-center gap-2 text-xs font-bold text-[#10B981] animate-fade-in">
                 <CheckCircle2 size={16} />
-                <span>Backup JSON file generated and downloaded successfully.</span>
+                <span>Routine data JSON file generated and downloaded successfully.</span>
               </div>
             )}
 
@@ -387,9 +387,9 @@ export const SettingsScreen: React.FC = () => {
             {/* Export Action */}
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm font-bold text-[#0F172A] block">Export My Data</span>
+                <span className="text-sm font-bold text-[#0F172A] block">Export Routine Data</span>
                 <span className="text-[11px] text-[#475569]">
-                  Download complete workout routines, history & PRs as JSON
+                  Download workout routines & exercise templates as JSON
                 </span>
               </div>
 
@@ -408,7 +408,7 @@ export const SettingsScreen: React.FC = () => {
               <div>
                 <span className="text-sm font-bold text-[#0F172A] block">Import Backup</span>
                 <span className="text-[11px] text-[#475569]">
-                  Restore workout logs from a gym-backup-*.json file
+                  Restore workout routines from a JSON backup file
                 </span>
               </div>
 
@@ -458,11 +458,11 @@ export const SettingsScreen: React.FC = () => {
           <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
             <div className="flex items-center gap-2 text-[#008B8E]">
               <FileJson size={22} />
-              <h3 className="text-base font-bold text-[#0F172A]">Import Workout Backup?</h3>
+              <h3 className="text-base font-bold text-[#0F172A]">Import Workout Routines?</h3>
             </div>
 
             <p className="text-xs text-[#475569] leading-relaxed">
-              Importing this backup will replace your current local workout data with the contents of this file:
+              Importing will restore the workout routines and exercises from this file without modifying your personal profile:
             </p>
 
             {/* Summary details */}
@@ -472,17 +472,27 @@ export const SettingsScreen: React.FC = () => {
                 <span className="font-bold text-[#0F172A]">{importSummary.routinesCount} items</span>
               </div>
               <div>
-                <span className="text-[10px] text-[#64748B] uppercase block">Workouts</span>
-                <span className="font-bold text-[#0F172A]">{importSummary.sessionsCount} sessions</span>
+                <span className="text-[10px] text-[#64748B] uppercase block">Routine Exercises</span>
+                <span className="font-bold text-[#0F172A]">{importSummary.exercisesCount ?? 0} exercises</span>
               </div>
-              <div>
-                <span className="text-[10px] text-[#64748B] uppercase block">Records (PRs)</span>
-                <span className="font-bold text-[#0F172A]">{importSummary.prsCount} PRs</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-[#64748B] uppercase block">Custom Exercises</span>
-                <span className="font-bold text-[#0F172A]">{importSummary.customExercisesCount} custom</span>
-              </div>
+              {importSummary.sessionsCount > 0 && (
+                <div>
+                  <span className="text-[10px] text-[#64748B] uppercase block">Workouts</span>
+                  <span className="font-bold text-[#0F172A]">{importSummary.sessionsCount} sessions</span>
+                </div>
+              )}
+              {importSummary.prsCount > 0 && (
+                <div>
+                  <span className="text-[10px] text-[#64748B] uppercase block">Records (PRs)</span>
+                  <span className="font-bold text-[#0F172A]">{importSummary.prsCount} PRs</span>
+                </div>
+              )}
+              {importSummary.customExercisesCount > 0 && (
+                <div>
+                  <span className="text-[10px] text-[#64748B] uppercase block">Custom Exercises</span>
+                  <span className="font-bold text-[#0F172A]">{importSummary.customExercisesCount} custom</span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 pt-2">
@@ -501,7 +511,7 @@ export const SettingsScreen: React.FC = () => {
                 onClick={handleConfirmImport}
                 className="bg-[#008B8E] text-white font-bold py-2.5 px-3 rounded-xl text-xs uppercase hover:bg-[#00A3A6] cursor-pointer"
               >
-                Import Backup
+                Import Routines
               </button>
             </div>
           </div>

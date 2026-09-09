@@ -16,15 +16,16 @@ export interface GymBackupPayload {
   version: number;
   exportedAt: number;
   appName: string;
-  profile: UserProfile;
-  preferences: any;
+  type?: 'routines_export' | 'full_backup';
+  profile?: UserProfile;
+  preferences?: any;
   routines: Routine[];
   weeklySchedule?: Record<number, string | null>;
   splitName?: string;
-  completedSessions: WorkoutSession[];
-  personalRecords: PersonalRecord[];
-  favorites: string[];
-  customExercises: Exercise[];
+  completedSessions?: WorkoutSession[];
+  personalRecords?: PersonalRecord[];
+  favorites?: string[];
+  customExercises?: Exercise[];
   activeSession?: WorkoutSession | null;
 }
 
@@ -34,6 +35,7 @@ export interface BackupValidationResult {
   data?: GymBackupPayload;
   summary?: {
     routinesCount: number;
+    exercisesCount?: number;
     sessionsCount: number;
     prsCount: number;
     customExercisesCount: number;
@@ -41,31 +43,39 @@ export interface BackupValidationResult {
 }
 
 /**
- * Collects current application state and downloads it as a formatted JSON file.
+ * Collects current workout routine data (routines, routine exercises, and planner schedule)
+ * and downloads it as a formatted JSON file.
+ * Excludes user profile, personal data, workout history, and personal records.
  */
 export function exportBackupData(): void {
   const routineState = useRoutineStore.getState();
-  const historyState = useHistoryStore.getState();
   const exerciseState = useExerciseStore.getState();
-  const userState = useUserStore.getState();
-  const workoutState = useWorkoutStore.getState();
 
-  const customExercises = exerciseState.exercises.filter((e) => e.isCustom);
+  const routines = routineState.routines;
+
+  // Collect custom exercises referenced in routines to ensure completeness
+  const routineExerciseIds = new Set<string>();
+  routines.forEach((r) => {
+    if (Array.isArray(r.exercises)) {
+      r.exercises.forEach((e) => {
+        if (e.exerciseId) routineExerciseIds.add(e.exerciseId);
+      });
+    }
+  });
+
+  const relevantCustomExercises = exerciseState.exercises.filter(
+    (e) => e.isCustom && routineExerciseIds.has(e.id)
+  );
 
   const payload: GymBackupPayload = {
     version: DATA_SCHEMA_VERSION,
     exportedAt: Date.now(),
     appName: 'GYM',
-    profile: userState.profile,
-    preferences: userState.preferences,
-    routines: routineState.routines,
+    type: 'routines_export',
+    routines,
     weeklySchedule: routineState.weeklySchedule,
     splitName: routineState.splitName,
-    completedSessions: historyState.completedSessions,
-    personalRecords: historyState.personalRecords,
-    favorites: exerciseState.favorites,
-    customExercises,
-    activeSession: workoutState.activeSession,
+    customExercises: relevantCustomExercises,
   };
 
   const jsonStr = JSON.stringify(payload, null, 2);
@@ -73,7 +83,7 @@ export function exportBackupData(): void {
   const url = URL.createObjectURL(blob);
 
   const today = new Date().toISOString().split('T')[0];
-  const filename = `GYM-backup-${today}.json`;
+  const filename = `gym-routines-${today}.json`;
 
   const link = document.createElement('a');
   link.href = url;
@@ -95,6 +105,37 @@ export function validateBackupData(jsonString: string): BackupValidationResult {
       return { isValid: false, error: 'Backup file is empty or not a valid JSON object.' };
     }
 
+    // Support direct array of routines
+    if (Array.isArray(parsed)) {
+      const isValidRoutineList = parsed.every(
+        (item) => item && typeof item === 'object' && typeof item.name === 'string' && Array.isArray(item.exercises)
+      );
+      if (!isValidRoutineList) {
+        return { isValid: false, error: 'Invalid routine format: expected an array of routines with exercises.' };
+      }
+      const exercisesCount = parsed.reduce(
+        (acc, r) => acc + (Array.isArray(r.exercises) ? r.exercises.length : 0),
+        0
+      );
+      return {
+        isValid: true,
+        data: {
+          version: DATA_SCHEMA_VERSION,
+          exportedAt: Date.now(),
+          appName: 'GYM',
+          type: 'routines_export',
+          routines: parsed,
+        },
+        summary: {
+          routinesCount: parsed.length,
+          exercisesCount,
+          sessionsCount: 0,
+          prsCount: 0,
+          customExercisesCount: 0,
+        },
+      };
+    }
+
     if (typeof parsed.version !== 'number' || parsed.version < 1) {
       return { isValid: false, error: 'Incompatible or missing backup schema version.' };
     }
@@ -103,16 +144,18 @@ export function validateBackupData(jsonString: string): BackupValidationResult {
       return { isValid: false, error: 'Invalid backup structure: missing routines collection.' };
     }
 
-    if (!Array.isArray(parsed.completedSessions)) {
-      return { isValid: false, error: 'Invalid backup structure: missing workout history collection.' };
-    }
+    const exercisesCount = parsed.routines.reduce(
+      (acc: number, r: any) => acc + (Array.isArray(r.exercises) ? r.exercises.length : 0),
+      0
+    );
 
     return {
       isValid: true,
       data: parsed as GymBackupPayload,
       summary: {
         routinesCount: parsed.routines.length,
-        sessionsCount: parsed.completedSessions.length,
+        exercisesCount,
+        sessionsCount: Array.isArray(parsed.completedSessions) ? parsed.completedSessions.length : 0,
         prsCount: Array.isArray(parsed.personalRecords) ? parsed.personalRecords.length : 0,
         customExercisesCount: Array.isArray(parsed.customExercises) ? parsed.customExercises.length : 0,
       },
@@ -177,8 +220,8 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
       await routineService.savePlannerSchedule(payload.weeklySchedule, payload.splitName || 'My Routine Planner').catch(console.warn);
     }
 
-    // 4. Restore History & PRs
-    if (Array.isArray(payload.completedSessions)) {
+    // 4. Restore History & PRs (only if present in payload)
+    if (Array.isArray(payload.completedSessions) && payload.completedSessions.length > 0) {
       useHistoryStore.setState({
         completedSessions: payload.completedSessions,
         personalRecords: payload.personalRecords || [],
@@ -189,7 +232,7 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
     }
 
     // 5. Restore Favorites & Custom Exercises
-    if (Array.isArray(payload.favorites)) {
+    if (Array.isArray(payload.favorites) && payload.favorites.length > 0) {
       useExerciseStore.setState({
         favorites: payload.favorites,
       });
@@ -205,13 +248,13 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
       }
     }
 
-    // 6. Restore or Clear Active Session
+    // 6. Restore or Clear Active Session (only if specified in payload)
     if (payload.activeSession && payload.activeSession.status === 'in_progress') {
       useWorkoutStore.setState({
         activeSession: payload.activeSession,
       });
       await workoutRepository.saveActiveSession(payload.activeSession);
-    } else {
+    } else if (payload.activeSession !== undefined) {
       await workoutRepository.clearActiveSession();
     }
 
