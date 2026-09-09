@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   Timer,
   Volume2,
-  Cloud,
   Trash2,
   RefreshCw,
   AlertTriangle,
@@ -49,9 +48,6 @@ export const SettingsScreen: React.FC = () => {
     toggleAutoStartRest,
     toggleSound,
     toggleVibration,
-    syncStatus,
-    lastSyncedAt,
-    triggerSync,
   } = useUserStore();
 
   const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
@@ -59,15 +55,8 @@ export const SettingsScreen: React.FC = () => {
   const [importSummary, setImportSummary] = useState<any>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [importSuccess, setImportSuccess] = useState(false);
-
-  const handleSyncClick = async () => {
-    setIsSyncing(true);
-    await triggerSync();
-    setIsSyncing(false);
-  };
 
   const handleExport = () => {
     exportBackupData();

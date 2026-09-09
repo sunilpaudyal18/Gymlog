@@ -159,10 +159,3 @@ export interface UserProfile {
   defaultRestSeconds: number;
 }
 
-export interface SyncStatus {
-  isOnline: boolean;
-  syncState: 'connected' | 'syncing' | 'synced' | 'error';
-  lastSyncedAt?: number;
-  pendingChangesCount: number;
-  errorMessage?: string;
-}

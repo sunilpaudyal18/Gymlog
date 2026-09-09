@@ -17,8 +17,6 @@ export interface UserPreferences {
 interface UserState {
   profile: UserProfile;
   preferences: UserPreferences;
-  syncStatus: 'synced' | 'syncing' | 'offline' | 'error';
-  lastSyncedAt: number | null;
 
   // Actions
   updateProfile: (updated: Partial<UserProfile>) => void;
@@ -29,7 +27,6 @@ interface UserState {
   toggleSound: () => void;
   toggleVibration: () => void;
   toggleNotifications: () => void;
-  triggerSync: () => Promise<void>;
   signOut: () => void;
 }
 
@@ -77,8 +74,6 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       profile: INITIAL_PROFILE,
       preferences: INITIAL_PREFERENCES,
-      syncStatus: 'synced',
-      lastSyncedAt: Date.now() - 1000 * 60 * 15, // 15 mins ago
 
       updateProfile: (updated) =>
         set((state) => ({ profile: { ...state.profile, ...updated } })),
@@ -138,15 +133,6 @@ export const useUserStore = create<UserState>()(
           },
         })),
 
-      triggerSync: async () => {
-        set({ syncStatus: 'syncing' });
-        await new Promise((res) => setTimeout(res, 1200));
-        set({
-          syncStatus: navigator.onLine ? 'synced' : 'offline',
-          lastSyncedAt: Date.now(),
-        });
-      },
-
       signOut: () => {
         // Reset or prepare unauthenticated state while preserving workout database
         set({
@@ -163,7 +149,6 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         profile: state.profile,
         preferences: state.preferences,
-        lastSyncedAt: state.lastSyncedAt,
       }),
     }
   )

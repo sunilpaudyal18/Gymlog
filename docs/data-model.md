@@ -187,13 +187,3 @@ interface StrengthProgressPoint {
 }
 ```
 
-### 6. SyncState
-```typescript
-interface SyncStatus {
-  isOnline: boolean;
-  syncState: 'connected' | 'syncing' | 'synced' | 'error';
-  lastSyncedAt?: number;
-  pendingChangesCount: number;
-  errorMessage?: string;
-}
-```

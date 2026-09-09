@@ -50,8 +50,8 @@ export const useExerciseStore = create<ExerciseState>()(
       searchQuery: '',
       selectedMuscleFilter: 'all',
       selectedEquipmentFilter: 'all',
-      favorites: ['barbell-bench-press', 'incline-dumbbell-bench-press', 'barbell-back-squat', 'barbell-deadlift'],
-      recentExerciseIds: ['barbell-bench-press', 'incline-dumbbell-bench-press', 'standing-cable-chest-fly', 'cable-rope-tricep-pushdown'],
+      favorites: [],
+      recentExerciseIds: [],
       multiSelectedIds: [],
 
       setSearchQuery: (query) => set({ searchQuery: query }),

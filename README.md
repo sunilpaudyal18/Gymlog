@@ -56,24 +56,18 @@ Whether lifting in a basement with zero cellular reception or flying across time
 
 ## Core System Features
 
-### 1. 100% Local-First & Completely Offline
-* **Zero Account Required**: Start tracking immediately upon opening the URL. No email verification, no passwords, no subscriptions.
-* **Client-Side Persistence**: Workouts, custom routines, exercise history, and personal records persist seamlessly in `localStorage` and client caches.
-* **Offline Service Worker (PWA)**: Full offline service worker caching ensures the app loads instantaneously on iOS Safari, Android Chrome, and Desktop browsers even in airplane mode.
-* **Instant JSON Backup & Restore**: Export your complete training database into an uncompressed, human-readable JSON file at any time with one click, or import previous backups with zero data loss.
+### 1. 100% Local-First, Backend-Free & Offline-Only
+* **Zero Account & Zero Cloud**: Start tracking immediately. No login, no backend server, no cloud database, no third-party telemetry, and no fake sync indicators.
+* **IndexedDB Durable Source of Truth**: User routines, weekly planner splits, custom movements, completed workouts, and personal records reside durably in on-device IndexedDB (`gym_offline_db`).
+* **Offline Service Worker (PWA)**: Full cache-first offline service worker ensures instantaneous cold startups on iOS Safari, Android Chrome, and Desktop browsers even in airplane mode.
+* **Hard Refresh & Restart Resilience**: Safe hydration barrier blocks UI rendering until IndexedDB is connected, guaranteeing that hard refreshes (`Ctrl + F5`), browser restarts, or PWA updates never erase user records.
+* **Local JSON Backup & Restore**: Export your complete routine database into a clean JSON file at any time, or import previous backups with automatic pre-restore safety snapshots.
 
 ---
 
 ### 2. Dynamic Day-of-the-Week Split Scheduler
-* **Calendar Engine**: Automatically calculates the athlete's current day of the week (Monday through Sunday) using client local timezone time.
-* **Default Weekly Periodization**:
-  * **Monday**: Chest + Triceps Focus (`chest-triceps-focus`)
-  * **Tuesday**: Push Day Workout (`push-day-workout`)
-  * **Wednesday**: Pull Day Focus (`pull-day-focus`)
-  * **Thursday**: Leg Destroyer (`leg-destroyer`)
-  * **Friday**: Chest + Triceps Focus (`chest-triceps-focus`)
-  * **Saturday**: Active Recovery & Mobility (Rest Day)
-  * **Sunday**: Full Rest & Muscle Repair (Rest Day)
+* **Calendar Engine**: Automatically calculates the athlete's current day of the week (Sunday through Saturday) using client local timezone time.
+* **Pristine Blank Slate for New Users**: Brand new users start with an unassigned, clean weekly schedule (Sunday–Saturday unassigned), empowering you to build your custom routine split completely from scratch.
 * **Interactive Hot-Swap Modal**:
   * Switch any day's routine on the fly or mark today as a Rest Day.
   * Layered at `z-[100]` with a mobile drag handle and safe-area padding to eliminate navigation bar clipping.
@@ -92,18 +86,18 @@ Whether lifting in a basement with zero cellular reception or flying across time
 ---
 
 ### 4. Canonical Exercise Library & Legendary Masterclasses
-* **8 Curated Muscle Groups**:
-  * **Chest**: Arnold Schwarzenegger (*The Austrian Oak*) — 27 canonical movements
-  * **Back**: Ronnie Coleman (*The King*) — 30 canonical movements
-  * **Legs**: Tom Platz (*The Golden Eagle*) — 45 canonical movements
-  * **Shoulders**: Franco Columbu (*3D Capped Delts*) — 22 canonical movements
-  * **Biceps**: Larry Scott (*The Golden Arm*) — 14 canonical movements
-  * **Triceps**: Dorian Yates (*Horseshoe Triceps*) — 15 canonical movements
-  * **Abs**: Frank Zane (*The Aesthetic King*) — 20 canonical movements
-  * **Forearms**: Lee Priest (*Iron Grip*) — 14 canonical movements
-* **Anatomical Target Filters**: Instant sub-muscle filtering (e.g. Upper Chest, Mid Chest, Lower Chest).
+* **8 Curated Muscle Groups with 200+ Canonical Exercises**:
+  * **Chest**: Arnold Schwarzenegger (*The Austrian Oak*) — Flat, incline, decline barbell & dumbbell presses, cable crossovers, dips, floor presses
+  * **Back**: Ronnie Coleman (*The King*) — Deadlifts, barbell bent-over rows, Pendlay rows, lat pulldowns, T-bar rows, chest-supported rows
+  * **Shoulders**: Franco Columbu (*3D Capped Delts*) — Overhead presses, push presses, Arnold presses, lateral raises, face pulls, rear delt flyes
+  * **Biceps**: Larry Scott (*The Golden Arm*) — Barbell curls, EZ preacher curls, incline dumbbell curls, hammer curls, spider curls, concentration curls
+  * **Triceps**: Dorian Yates (*Horseshoe Triceps*) — Skull crushers, close-grip bench presses, rope pushdowns, overhead extensions, JM presses
+  * **Legs**: Tom Platz (*The Golden Eagle*) — Barbell back squats, front squats, Romanian deadlifts, Bulgarian split squats, leg presses, hack squats
+  * **Abs**: Frank Zane (*The Aesthetic King*) — Hanging leg raises, ab wheel rollouts, cable woodchoppers, dragon flags, planks
+  * **Forearms**: Lee Priest (*Iron Grip*) — Wrist curls, reverse curls, farmer's carries, dead hangs, plate pinch holds
+* **Anatomical Target Filters**: Instant sub-muscle filtering across all major isolation zones.
 * **Equipment Categories**: Multi-select filtering across Barbell, Dumbbells, Machine, Cables, Bodyweight, Smith Machine, Plate Loaded, and Landmine.
-* **Custom Movement Creation**: Add custom exercises with target sets, rep ranges, and movement type classifications (Compound vs. Isolation).
+* **Custom Movement Creation**: Add custom exercises with target sets, rep ranges, and movement type classifications (Compound vs. Isolation) that persist directly in IndexedDB.
 
 ---
 
@@ -152,15 +146,47 @@ The user interface follows the **"Kinetic G Barbell"** design tokens:
 
 ---
 
-## Tech Stack
+## Tech Stack & Storage Architecture
 
-* **Framework**: React 19 + TypeScript (Strict Mode)
+```text
+GYM LOG STORAGE ARCHITECTURE
+
+Primary durable storage:
+IndexedDB (gym_offline_db)
+
+Runtime state:
+Zustand
+
+Small metadata/preferences:
+localStorage only where necessary
+
+Offline application resources:
+Service Worker Cache Storage (gym-kinetic-cache-v3)
+
+Backend:
+None
+
+Cloud:
+None
+
+Authentication:
+None
+
+Cloud synchronization:
+None
+
+Internet requirement:
+None for application functionality
+```
+
+* **Framework**: React 18 + TypeScript (Strict Mode)
 * **Bundler & Tooling**: Vite 6
 * **Styling**: Vanilla CSS + Tailwind CSS (Utility tokens and CSS keyframes)
-* **State Management**: Zustand (Local-first persisted stores with storage partitioning)
-* **Icons**: Lucide React
-* **Typography**: Inter (UI & Headings) + JetBrains Mono (Telemetry & Metrics)
-* **PWA & Offline**: Custom Service Worker + Web App Manifest
+* **Durable Database**: IndexedDB (`gym_offline_db` v2) with transactional repositories
+* **Runtime State**: Zustand (In-memory reactive UI state only)
+* **Icons**: Lucide React (Locally bundled SVGs)
+* **Typography**: `@fontsource/inter` (UI & Headings) + `@fontsource/jetbrains-mono` (Telemetry & Metrics) — 100% self-hosted
+* **PWA & Offline**: Custom Service Worker + Web App Manifest (`gym-kinetic-cache-v3`)
 
 ---
 

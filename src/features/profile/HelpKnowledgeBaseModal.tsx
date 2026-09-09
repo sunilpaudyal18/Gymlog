@@ -50,15 +50,15 @@ export const HelpKnowledgeBaseModal: React.FC<HelpKnowledgeBaseModalProps> = ({
     },
     {
       id: 'offline',
-      category: 'Data & Sync',
+      category: 'Data & Storage',
       icon: WifiOff,
       question: 'How does Offline Logging work?',
       answer:
-        'All routines, exercises, history logs, and personal records are stored in high-performance local browser storage. You can log workouts in gym basements with zero internet connectivity. As soon as connectivity returns, your data automatically validates and updates seamlessly.',
+        'All routines, custom exercises, workout logs, and personal records are stored durably on your device in IndexedDB. You can train in gym basements or airplane mode with 100% functionality and zero internet connection required.',
       bullets: [
         'Zero network latency during training',
-        'Automatic local persistence across sessions',
-        'Safe manual cloud sync trigger available anytime',
+        'Automatic on-device persistence across sessions',
+        '100% private with no external account or cloud dependency',
       ],
     },
     {

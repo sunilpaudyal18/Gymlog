@@ -1,64 +1,59 @@
-# GYM — Offline & Synchronization Architecture
+# GYM — 100% Local Offline Storage Architecture
 
 ## 1. Overview & Core Principle
 
-**"USER DATA > NETWORK RESPONSE"**
+**"USER DATA IS 100% DURABLE, LOCAL & PRIVATE"**
 
-The GYM workout companion prioritizes local data durability over remote network synchronization. When a user logs a set, completes a routine, or modifies preferences:
-1. The action executes immediately in local memory/state.
-2. The transaction is durably committed to browser persistence (`localStorage` / IndexedDB via Zustand persist).
-3. The mutation is queued into the centralized **Sync Outbox** (`useSyncManager`).
-4. The UI reflects the change with zero perceptible latency.
-5. When online, the Sync Manager processes pending mutations with idempotency keys and exponential backoff.
+Gym Log is engineered as a backend-free, cloud-free, offline-first application. When a user creates a routine, assigns days in the weekly planner, logs workout sets, or achieves a personal record:
+1. The action executes immediately in runtime state (Zustand).
+2. The transaction is durably committed to browser IndexedDB (`gym_offline_db`).
+3. The UI reflects changes with 0ms perceptible latency.
+4. **Zero network calls are made. Zero external accounts are required.**
 
 ---
 
 ## 2. PWA & Service Worker Caching Strategy
 
 ### A. App Shell & Static Assets
-- **Cache Name**: `gym-kinetic-cache-v1`
+- **Cache Name**: `gym-kinetic-cache-v3`
 - **Cache-First Strategy**:
-  - HTML, CSS, JavaScript chunks, fonts (Inter, JetBrains Mono), and SVG icons (`/icon-192.svg`, `/icon-512.svg`, `/manifest.json`).
-  - Cache is populated upon `install` and purged on `activate` for smooth version upgrades.
+  - HTML, CSS, JavaScript chunks, bundled fonts (Inter, JetBrains Mono), and SVG icons.
+  - Pre-cached upon install and claimed immediately on activation.
 
 ### B. Navigation & Dynamic Routes
-- **Network-First with Cache Fallback**:
-  - When offline, navigation requests seamlessly fall back to `/index.html`, allowing full client-side routing across all screens (`/`, `/workouts`, `/exercises`, `/workout-mode`, `/history`, `/progress`, `/profile`, `/settings`).
+- **Offline Navigation Fallback**:
+  - All navigation requests fall back to cached `/index.html` when offline, allowing full React Router client-side execution across all application screens (`/`, `/workouts`, `/exercises`, `/workout-mode`, `/history`, `/progress`, `/profile`, `/settings`).
 
 ---
 
-## 3. Offline Outbox & Mutation Queue
+## 3. Durable Storage Architecture
 
-Each offline mutation is tracked as an `OutboxItem`:
-```typescript
-interface OutboxItem {
-  id: string;
-  operationType: 'CREATE_SESSION' | 'UPDATE_ROUTINE' | 'DELETE_ROUTINE' | 'UPDATE_PREFERENCES';
-  entityType: 'workout_session' | 'routine' | 'user_profile';
-  entityId: string;
-  payload: any;
-  createdAt: number;
-  updatedAt: number;
-  retryCount: number;
-  status: 'pending' | 'syncing' | 'failed' | 'completed';
-  idempotencyKey: string;
-}
+```text
+Primary durable storage:
+IndexedDB (gym_offline_db)
+
+Runtime state:
+Zustand
+
+Small metadata/preferences:
+localStorage only where necessary
+
+Offline application resources:
+Service Worker Cache Storage
+
+Backend:
+None
+
+Cloud:
+None
+
+Authentication:
+None
+
+Cloud synchronization:
+None
+
+Internet requirement:
+None for application functionality
 ```
 
-### Idempotency & Duplicate Prevention
-- Mutations use deterministic `idempotencyKey` values (e.g. `CREATE_SESSION-${sessionId}`).
-- Rapid repeated taps or multiple reconnections will not enqueue duplicate mutations.
-
----
-
-## 4. Conflict Resolution Strategy
-- **Client Wins on Workout Performance**: Actual workout logs and logged sets represent physical actions performed by the user and are never destructively overwritten.
-- **Last-Write-Wins on Preferences**: Timestamp comparison reconciles configuration updates (e.g., Weight unit).
-
----
-
-## 5. Summary of Supported Connectivity States
-- `ONLINE`: Connected to the network; pending outbox is processed.
-- `OFFLINE`: Disconnected; all actions persist locally and outbox mutations queue silently.
-- `SYNCING`: Outbox is actively synchronizing with the cloud.
-- `SYNCED`: All local records match cloud state.

@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon,
   HelpCircle,
   ChevronRight,
-  Cloud,
+  HardDrive,
   Edit2,
   Timer,
   Volume2,
@@ -28,7 +28,7 @@ import {
 } from '../../utils/analyticsCalc';
 import { getCurrentWeekDays, isSameCalendarDay } from '../../utils/scheduler';
 import { compressProfileImage } from '../../utils/imageCompressor';
-import { SyncStatusModal } from './SyncStatusModal';
+import { StorageStatusModal } from './StorageStatusModal';
 import { TrainingUnitsModal } from './TrainingUnitsModal';
 import { TimerSettingsModal } from './TimerSettingsModal';
 import { SoundVibrationModal } from './SoundVibrationModal';
@@ -112,10 +112,10 @@ export const ProfileScreen: React.FC = () => {
       onClick: () => setShowSoundModal(true),
     },
     {
-      id: 'sync',
-      label: 'Sync & Cloud Status',
-      subtitle: 'Real-time database backup & offline sync',
-      icon: Cloud,
+      id: 'storage',
+      label: 'Local Storage Status',
+      subtitle: '100% private on-device IndexedDB database',
+      icon: HardDrive,
       color: 'text-[#008B8E]',
       onClick: () => setShowSyncModal(true),
     },
@@ -517,9 +517,9 @@ export const ProfileScreen: React.FC = () => {
         />
       )}
 
-      {/* Sync Status Modal */}
+      {/* Storage Status Modal */}
       {showSyncModal && (
-        <SyncStatusModal
+        <StorageStatusModal
           isOpen={showSyncModal}
           onClose={() => setShowSyncModal(false)}
         />
