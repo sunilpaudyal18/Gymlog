@@ -20,7 +20,7 @@ import { getDatabase } from '../database/db';
 import { exerciseService } from '../data/exerciseService';
 import { routineService } from '../data/routineService';
 import { workoutService } from '../data/workoutService';
-import { migrationService } from '../data/migrationService';
+import { migrationRunner } from '../data/migrations';
 import { crashRecoveryService } from '../recovery/crashRecoveryService';
 import { initSchemaMigration } from './schemaManager';
 
@@ -40,9 +40,12 @@ export function waitForStorageHydration(): Promise<void> {
         console.warn('[HydrationManager] IndexedDB warmup non-critical error:', err);
       });
 
-      // 2. Run safe, idempotent one-time migration (storage_migration_v1)
+      // 2. Run sequential safe data schema migration framework (Phase 4)
       try {
-        await migrationService.runOneTimeMigration();
+        const migResult = await migrationRunner.runMigrations();
+        if (!migResult.success) {
+          console.error('[HydrationManager] Migration reported failure, continuing with existing data safely:', migResult.error);
+        }
       } catch (migErr) {
         console.warn('[HydrationManager] Migration pipeline caught non-critical error:', migErr);
       }

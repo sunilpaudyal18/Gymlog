@@ -12,7 +12,7 @@
  */
 
 export const DB_NAME = 'gym_offline_db';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const STORES = {
   KV_STORE: 'kv_store',           // Key-value store for Zustand store states
@@ -22,6 +22,7 @@ export const STORES = {
   EXERCISES: 'exercises',         // Custom movements and exercise preferences
   SNAPSHOTS: 'snapshots',         // Automatic local recovery snapshots (latest 3)
   METADATA: 'db_metadata',        // Schema version, migration tracking
+  SYNC_OUTBOX: 'sync_outbox',     // Local-first pending sync operations queue
 } as const;
 
 export type StoreName = typeof STORES[keyof typeof STORES];
@@ -121,8 +122,17 @@ export function getDatabase(): Promise<IDBDatabase> {
         }
       }
 
-      // Future versions (e.g. v2 -> v3) follow this additive pattern:
-      // if (oldVersion < 2) { ... }
+      // Version 2 Schema Setup (Sync Outbox Queue)
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(STORES.SYNC_OUTBOX)) {
+          const outboxStore = db.createObjectStore(STORES.SYNC_OUTBOX, { keyPath: 'operationId' });
+          outboxStore.createIndex('status', 'status', { unique: false });
+          outboxStore.createIndex('entityType', 'entityType', { unique: false });
+          outboxStore.createIndex('entityId', 'entityId', { unique: false });
+          outboxStore.createIndex('createdAt', 'createdAt', { unique: false });
+          outboxStore.createIndex('idempotencyKey', 'idempotencyKey', { unique: false });
+        }
+      }
     };
 
     request.onsuccess = () => {
@@ -225,6 +235,65 @@ export async function withStore<T>(
 }
 
 /**
+ * Generic transactional helper to perform atomic operations across multiple object stores in a single transaction.
+ */
+export async function withStores<T>(
+  storeNames: StoreName[],
+  mode: IDBTransactionMode,
+  callback: (stores: Record<StoreName, IDBObjectStore>, transaction: IDBTransaction) => Promise<T> | T
+): Promise<T> {
+  const db = await getDatabase();
+  return new Promise<T>((resolve, reject) => {
+    try {
+      const transaction = db.transaction(storeNames, mode);
+      const storesRecord = {} as Record<StoreName, IDBObjectStore>;
+      for (const name of storeNames) {
+        storesRecord[name] = transaction.objectStore(name);
+      }
+
+      let result: T;
+
+      transaction.oncomplete = () => {
+        resolve(result);
+      };
+
+      transaction.onerror = () => {
+        const err = transaction.error || new Error(`Transaction failed on stores: ${storeNames.join(', ')}`);
+        if (err.name === 'QuotaExceededError') {
+          console.error(`[DB] QuotaExceededError while operating on stores: ${storeNames.join(', ')}`);
+        }
+        reject(err);
+      };
+
+      transaction.onabort = () => {
+        const err = transaction.error || new Error(`Transaction aborted on stores: ${storeNames.join(', ')}`);
+        reject(err);
+      };
+
+      const callbackResult = callback(storesRecord, transaction);
+      if (callbackResult instanceof Promise) {
+        callbackResult
+          .then((res) => {
+            result = res;
+          })
+          .catch((err) => {
+            try {
+              transaction.abort();
+            } catch {
+              // Ignore if already aborted
+            }
+            reject(err);
+          });
+      } else {
+        result = callbackResult;
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/**
  * Low-level KV store get.
  */
 export async function kvGet<T = any>(key: string): Promise<T | null> {
@@ -277,6 +346,7 @@ export async function clearAllDatabaseStores(): Promise<void> {
     STORES.ROUTINES,
     STORES.EXERCISES,
     STORES.SNAPSHOTS,
+    STORES.SYNC_OUTBOX,
   ];
 
   return new Promise<void>((resolve, reject) => {

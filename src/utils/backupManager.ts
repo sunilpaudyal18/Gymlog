@@ -215,6 +215,14 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
       await workoutRepository.clearActiveSession();
     }
 
+    // 7. Reset sync outbox to clean local baseline without duplicating operations
+    try {
+      const { syncEngine } = await import('../services/data/sync');
+      await syncEngine.reset();
+    } catch (syncErr) {
+      console.warn('[BackupManager] Error resetting sync outbox after restore:', syncErr);
+    }
+
     return { success: true, safetySnapshotId };
   } catch (err) {
     console.error('[BackupManager] Error restoring backup data:', err);

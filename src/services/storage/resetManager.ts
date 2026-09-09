@@ -16,14 +16,19 @@ import { useHistoryStore } from '../../stores/useHistoryStore';
 import { useExerciseStore } from '../../stores/useExerciseStore';
 import { PRESET_EXERCISES } from '../../constants/exercises';
 import { MIGRATION_MARKER } from '../data/migrationService';
+import { CURRENT_DATA_SCHEMA_VERSION } from '../data/migrations';
 import { routineService } from '../data/routineService';
+import { syncEngine } from '../data/sync/syncEngine';
 
 export async function executeCompleteDataPurge(): Promise<void> {
-  // 1. Deep IndexedDB clearance across all object stores
+  // 1. Deep IndexedDB clearance across all object stores (including sync_outbox)
   try {
     await clearAllDatabaseStores();
-    // Guarantee migration marker remains set in kv_store so boot doesn't resurrect legacy data
+    // Guarantee migration marker and current data schema version remain set in kv_store so boot doesn't resurrect legacy data
     await kvSet(MIGRATION_MARKER, 'completed').catch(() => {});
+    await kvSet('data_schema_version', CURRENT_DATA_SCHEMA_VERSION).catch(() => {});
+    // Reset sync metadata in STORES.METADATA to clean local-only state
+    await syncEngine.reset().catch(() => {});
   } catch (idbErr) {
     console.error('[ResetManager] Error clearing IndexedDB stores:', idbErr);
   }
@@ -54,9 +59,10 @@ export async function executeCompleteDataPurge(): Promise<void> {
         } catch (_) {}
       });
 
-      // Maintain migration marker in localStorage to guarantee idempotency
+      // Maintain migration marker and current data schema version in localStorage
       try {
         localStorage.setItem(MIGRATION_MARKER, 'completed');
+        localStorage.setItem(PROTECTED_STORAGE_KEYS.SCHEMA_VERSION, String(CURRENT_DATA_SCHEMA_VERSION));
       } catch (_) {}
     }
   } catch (lsErr) {

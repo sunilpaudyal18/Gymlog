@@ -5,7 +5,8 @@
 
 import { Routine } from '../../types';
 import { routineRepository } from '../database/repositories/routineRepository';
-import { kvGet, kvSet } from '../database/db';
+import { kvGet, kvSet, withStores, STORES } from '../database/db';
+import { outboxRepository } from './sync/outboxRepository';
 
 const SCHEDULE_STORAGE_KEY = 'gym_planner_schedule_v3';
 
@@ -28,12 +29,53 @@ export const routineService = {
   },
 
   /**
-   * Persists a routine into IndexedDB.
+   * Persists a routine into IndexedDB and atomically registers a sync outbox operation.
    */
   async saveRoutine(routine: Routine): Promise<boolean> {
     try {
-      await routineRepository.saveRoutine(routine);
-      return true;
+      return await withStores(
+        [STORES.ROUTINES, STORES.SYNC_OUTBOX, STORES.METADATA],
+        'readwrite',
+        async (stores) => {
+          const routineStore = stores[STORES.ROUTINES];
+          const outboxStore = stores[STORES.SYNC_OUTBOX];
+          const metaStore = stores[STORES.METADATA];
+
+          // Check if routine already exists to determine create vs update
+          const existingReq = routineStore.get(routine.id);
+          const existing = await new Promise<Routine | undefined>((res) => {
+            existingReq.onsuccess = () => res(existingReq.result as Routine);
+            existingReq.onerror = () => res(undefined);
+          });
+
+          const isUpdate = !!existing;
+          const enrichedRoutine: Routine = {
+            ...routine,
+            updatedAt: Date.now(),
+          };
+
+          // Put routine in routines store
+          await new Promise<void>((res, rej) => {
+            const putReq = routineStore.put(enrichedRoutine);
+            putReq.onsuccess = () => res();
+            putReq.onerror = () => rej(putReq.error);
+          });
+
+          // Queue operation in outbox store
+          await outboxRepository.queueOperationInTx(
+            outboxStore,
+            {
+              entityType: 'routine',
+              entityId: routine.id,
+              operation: isUpdate ? 'update' : 'create',
+              payload: enrichedRoutine,
+            },
+            metaStore
+          );
+
+          return true;
+        }
+      );
     } catch (err) {
       console.error('[RoutineService] Failed to save routine to IndexedDB:', err);
       return false;
@@ -41,12 +83,39 @@ export const routineService = {
   },
 
   /**
-   * Deletes a routine by ID from IndexedDB.
+   * Deletes a routine by ID from IndexedDB and atomically registers a delete outbox operation.
    */
   async deleteRoutine(id: string): Promise<boolean> {
     try {
-      await routineRepository.deleteRoutine(id);
-      return true;
+      return await withStores(
+        [STORES.ROUTINES, STORES.SYNC_OUTBOX, STORES.METADATA],
+        'readwrite',
+        async (stores) => {
+          const routineStore = stores[STORES.ROUTINES];
+          const outboxStore = stores[STORES.SYNC_OUTBOX];
+          const metaStore = stores[STORES.METADATA];
+
+          // Delete routine from routines store
+          await new Promise<void>((res, rej) => {
+            const delReq = routineStore.delete(id);
+            delReq.onsuccess = () => res();
+            delReq.onerror = () => rej(delReq.error);
+          });
+
+          // Queue delete operation in outbox store
+          await outboxRepository.queueOperationInTx(
+            outboxStore,
+            {
+              entityType: 'routine',
+              entityId: id,
+              operation: 'delete',
+            },
+            metaStore
+          );
+
+          return true;
+        }
+      );
     } catch (err) {
       console.error('[RoutineService] Failed to delete routine from IndexedDB:', err);
       return false;
@@ -107,12 +176,48 @@ export const routineService = {
   },
 
   /**
-   * Persists weekly schedule and split name to IndexedDB kv_store.
+   * Persists weekly schedule and split name to IndexedDB kv_store and outbox atomically.
    */
   async savePlannerSchedule(schedule: Record<number, string | null>, splitName: string): Promise<boolean> {
     try {
-      await kvSet(SCHEDULE_STORAGE_KEY, { weeklySchedule: schedule, splitName, updatedAt: Date.now() });
-      return true;
+      return await withStores(
+        [STORES.KV_STORE, STORES.SYNC_OUTBOX, STORES.METADATA],
+        'readwrite',
+        async (stores) => {
+          const kvStore = stores[STORES.KV_STORE];
+          const outboxStore = stores[STORES.SYNC_OUTBOX];
+          const metaStore = stores[STORES.METADATA];
+
+          const now = Date.now();
+          const scheduleData: PlannerScheduleData = {
+            weeklySchedule: schedule,
+            splitName,
+          };
+
+          await new Promise<void>((res, rej) => {
+            const putReq = kvStore.put({
+              key: SCHEDULE_STORAGE_KEY,
+              value: scheduleData,
+              updatedAt: now,
+            });
+            putReq.onsuccess = () => res();
+            putReq.onerror = () => rej(putReq.error);
+          });
+
+          await outboxRepository.queueOperationInTx(
+            outboxStore,
+            {
+              entityType: 'schedule',
+              entityId: 'weekly_schedule_singleton',
+              operation: 'update',
+              payload: scheduleData,
+            },
+            metaStore
+          );
+
+          return true;
+        }
+      );
     } catch (err) {
       console.error('[RoutineService] Error saving schedule to kv_store:', err);
       return false;

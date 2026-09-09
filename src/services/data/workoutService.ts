@@ -5,7 +5,8 @@
 
 import { WorkoutSession, PersonalRecord } from '../../types';
 import { workoutRepository } from '../database/repositories/workoutRepository';
-import { kvGet, kvSet } from '../database/db';
+import { kvGet, withStores, STORES } from '../database/db';
+import { outboxRepository } from './sync/outboxRepository';
 
 const PR_STORAGE_KEY = 'gym_personal_records_v3';
 
@@ -23,12 +24,39 @@ export const workoutService = {
   },
 
   /**
-   * Saves a completed workout session to IndexedDB.
+   * Saves a completed workout session to IndexedDB and atomically queues an outbox operation.
+   * Workouts are durable historical records and are protected from destructive coalescing.
    */
   async saveCompletedWorkout(session: WorkoutSession): Promise<boolean> {
     try {
-      await workoutRepository.saveCompletedWorkout(session);
-      return true;
+      return await withStores(
+        [STORES.WORKOUTS, STORES.SYNC_OUTBOX, STORES.METADATA],
+        'readwrite',
+        async (stores) => {
+          const workoutStore = stores[STORES.WORKOUTS];
+          const outboxStore = stores[STORES.SYNC_OUTBOX];
+          const metaStore = stores[STORES.METADATA];
+
+          await new Promise<void>((res, rej) => {
+            const putReq = workoutStore.put(session);
+            putReq.onsuccess = () => res();
+            putReq.onerror = () => rej(putReq.error);
+          });
+
+          await outboxRepository.queueOperationInTx(
+            outboxStore,
+            {
+              entityType: 'workout',
+              entityId: session.id,
+              operation: 'create',
+              payload: session,
+            },
+            metaStore
+          );
+
+          return true;
+        }
+      );
     } catch (err) {
       console.error('[WorkoutService] Error saving completed workout to IndexedDB:', err);
       return false;
@@ -36,7 +64,7 @@ export const workoutService = {
   },
 
   /**
-   * Retrieves active in-progress workout session from IndexedDB.
+   * Retrieves active in-progress workout session from IndexedDB (strictly crash-recovery).
    */
   async getActiveSession(): Promise<WorkoutSession | null> {
     try {
@@ -48,7 +76,7 @@ export const workoutService = {
   },
 
   /**
-   * Persists active in-progress workout session to IndexedDB (asynchronously, non-blocking).
+   * Persists active in-progress workout session to IndexedDB (crash recovery only, zero sync ops).
    */
   async saveActiveSession(session: WorkoutSession): Promise<boolean> {
     try {
@@ -61,7 +89,7 @@ export const workoutService = {
   },
 
   /**
-   * Clears active workout session from IndexedDB.
+   * Clears active workout session from IndexedDB (crash recovery only, zero sync ops).
    */
   async clearActiveSession(): Promise<boolean> {
     try {
@@ -87,12 +115,44 @@ export const workoutService = {
   },
 
   /**
-   * Persists personal records to IndexedDB kv_store.
+   * Persists personal records to IndexedDB kv_store and registers outbox update atomically.
    */
   async savePersonalRecords(records: PersonalRecord[]): Promise<boolean> {
     try {
-      await kvSet(PR_STORAGE_KEY, records);
-      return true;
+      return await withStores(
+        [STORES.KV_STORE, STORES.SYNC_OUTBOX, STORES.METADATA],
+        'readwrite',
+        async (stores) => {
+          const kvStore = stores[STORES.KV_STORE];
+          const outboxStore = stores[STORES.SYNC_OUTBOX];
+          const metaStore = stores[STORES.METADATA];
+
+          const now = Date.now();
+
+          await new Promise<void>((res, rej) => {
+            const putReq = kvStore.put({
+              key: PR_STORAGE_KEY,
+              value: records,
+              updatedAt: now,
+            });
+            putReq.onsuccess = () => res();
+            putReq.onerror = () => rej(putReq.error);
+          });
+
+          await outboxRepository.queueOperationInTx(
+            outboxStore,
+            {
+              entityType: 'personal_record',
+              entityId: 'personal_records_singleton',
+              operation: 'update',
+              payload: records,
+            },
+            metaStore
+          );
+
+          return true;
+        }
+      );
     } catch (err) {
       console.error('[WorkoutService] Error saving PRs to kv_store:', err);
       return false;

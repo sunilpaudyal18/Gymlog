@@ -28,9 +28,11 @@ import {
   removeProtectedSavedRoutine,
   isProtectedStorageCorrupted,
 } from './protectedStorage';
+import { CURRENT_DATA_SCHEMA_VERSION, migrationRunner } from '../data/migrations';
 
 export {
   APP_SCHEMA_VERSION,
+  CURRENT_DATA_SCHEMA_VERSION,
   PROTECTED_STORAGE_KEYS,
   getProtectedCustomExercises,
   persistProtectedCustomExercise,
@@ -169,33 +171,9 @@ export async function reconcileWithIndexedDb(): Promise<void> {
  */
 export function initSchemaMigration(): void {
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-
-    const storedVersionStr = localStorage.getItem(PROTECTED_STORAGE_KEYS.SCHEMA_VERSION);
-    const storedVersion = storedVersionStr ? parseInt(storedVersionStr, 10) : 0;
-
-    if (process.env.NODE_ENV === 'development') {
-      console.info(`[SchemaManager] Schema version check: current=${storedVersion}, target=${APP_SCHEMA_VERSION}`);
-    }
-
-    // Run initial synchronous migration immediately
-    migrateData();
-
-    // Asynchronously reconcile with IndexedDB
-    reconcileWithIndexedDb().catch(() => {});
-
-    // Re-verify migration whenever stores finish hydration from IndexedDB
-    if (useExerciseStore.persist?.onFinishHydration) {
-      useExerciseStore.persist.onFinishHydration(() => {
-        migrateData();
-      });
-    }
-
-    if (useRoutineStore.persist?.onFinishHydration) {
-      useRoutineStore.persist.onFinishHydration(() => {
-        migrateData();
-      });
-    }
+    migrationRunner.runMigrations().catch((err) => {
+      console.warn('[SchemaManager] Non-critical error during migration runner execution:', err);
+    });
   } catch (err) {
     console.error('[SchemaManager] Schema migration initialization encountered an error:', err);
   }
