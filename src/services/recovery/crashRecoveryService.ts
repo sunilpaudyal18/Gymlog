@@ -1,13 +1,16 @@
 /**
  * Active Workout Crash Recovery Service
- * Inspects IndexedDB on application boot for lingering in-progress workouts,
+ * Inspects IndexedDB on application boot for in-progress workouts,
  * restores them into useWorkoutStore, and signals the UI to display the recovery banner.
+ *
+ * Hardened Crash & Reload Protections:
+ * - Never destroys in-progress workouts due to schedule mismatches or midnight date rollovers.
+ * - Restores active sessions even when routine store is still hydrating.
+ * - Retains active session across app updates, browser reboots, and sudden tab crashes.
  */
 
 import { workoutRepository } from '../database/repositories/workoutRepository';
 import { useWorkoutStore } from '../../stores/useWorkoutStore';
-import { useRoutineStore } from '../../stores/useRoutineStore';
-import { isSameCalendarDay } from '../../utils/scheduler';
 import { WorkoutSession } from '../../types';
 
 export interface CrashRecoveryResult {
@@ -21,6 +24,9 @@ const recoveryListeners = new Set<RecoveryListener>();
 
 let hasCheckedRecovery = false;
 
+// Consider sessions older than 36 hours with 0 completed sets as abandoned
+const MAX_ABANDONED_AGE_MS = 36 * 60 * 60 * 1000;
+
 export const crashRecoveryService = {
   /**
    * Subscribe to crash recovery events.
@@ -32,8 +38,7 @@ export const crashRecoveryService = {
 
   /**
    * Checks for an active session in IndexedDB on application launch.
-   * Dynamically cross-references the current day of week and user's active routine schedule.
-   * Suppresses and auto-clears stale/mismatched active sessions.
+   * Restores any valid in-progress session into useWorkoutStore.
    */
   async checkAndRecover(): Promise<CrashRecoveryResult> {
     if (hasCheckedRecovery) {
@@ -47,39 +52,24 @@ export const crashRecoveryService = {
       if (
         storedSession &&
         storedSession.status === 'in_progress' &&
-        Array.isArray(storedSession.exercises)
+        Array.isArray(storedSession.exercises) &&
+        storedSession.exercises.length > 0
       ) {
-        // Real-Time Day Resolution & Active Routine Cross-Referencing
-        const todayRoutine = useRoutineStore.getState().getTodayScheduledRoutine();
-        const isToday = storedSession.startedAt
-          ? isSameCalendarDay(storedSession.startedAt, Date.now())
-          : false;
-
-        // Verify if session belongs to today's scheduled split and today is not a rest day
-        const isDayMatched = Boolean(todayRoutine && storedSession.routineId === todayRoutine.id);
-
-        if (!isToday || !isDayMatched) {
-          console.warn('[CrashRecovery] Suppressing stale or mismatched active session:', {
-            sessionRoutineId: storedSession.routineId,
-            sessionRoutineName: storedSession.routineName,
-            sessionStartedAt: storedSession.startedAt,
-            isToday,
-            todayRoutineId: todayRoutine?.id ?? 'rest_day',
-            todayRoutineName: todayRoutine?.name ?? 'Rest Day',
-          });
-
-          // Auto-update / clear stale active session to prevent mismatched alerts
-          await workoutRepository.clearActiveSession();
-          useWorkoutStore.setState({ activeSession: null });
-          return { recovered: false };
-        }
-
         // Count completed sets
         const completedSetsCount = storedSession.exercises.reduce((acc, ex) => {
           return acc + (ex.sets ? ex.sets.filter((s) => s.completed).length : 0);
         }, 0);
 
-        // Synchronize with workout store
+        // Check for abandoned session (older than 36h with zero completed sets)
+        const sessionAge = Date.now() - (storedSession.startedAt || 0);
+        if (sessionAge > MAX_ABANDONED_AGE_MS && completedSetsCount === 0) {
+          console.info('[CrashRecovery] Discarding ancient abandoned empty session (>36h old).');
+          await workoutRepository.clearActiveSession();
+          useWorkoutStore.setState({ activeSession: null });
+          return { recovered: false };
+        }
+
+        // Synchronize restored active session with workout store
         useWorkoutStore.setState({
           activeSession: storedSession,
         });
@@ -91,7 +81,14 @@ export const crashRecoveryService = {
         };
 
         // Notify all UI listeners
-        recoveryListeners.forEach((listener) => listener(result));
+        recoveryListeners.forEach((listener) => {
+          try {
+            listener(result);
+          } catch (err) {
+            console.warn('[CrashRecovery] Error in recovery listener:', err);
+          }
+        });
+
         return result;
       }
 

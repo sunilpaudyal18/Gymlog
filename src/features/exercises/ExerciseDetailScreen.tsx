@@ -52,7 +52,7 @@ export const ExerciseDetailScreen: React.FC = () => {
       defaultWeightKg: existingRoutineEx.targetWeightKg || 30,
       defaultRestSeconds: existingRoutineEx.restSeconds || 90,
       instructions: ['Perform movement with controlled cadence and proper form.'],
-      imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&auto=format&fit=crop&q=80',
+      imageUrl: '/icon-192.svg',
     };
   }
 

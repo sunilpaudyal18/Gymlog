@@ -48,7 +48,7 @@ export const WeeklyPlannerScreen: React.FC = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [activeEditingDay, setActiveEditingDay] = useState<number>(0);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [localTitle, setLocalTitle] = useState(splitName || 'Routine Planner: 4-Day Split');
+  const [localTitle, setLocalTitle] = useState(splitName || 'My Routine Planner');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [justSavedNotification, setJustSavedNotification] = useState(false);
 
@@ -140,7 +140,7 @@ export const WeeklyPlannerScreen: React.FC = () => {
       setSplitName('Routine Planner: 3-Day Full Body Split');
     } else {
       resetToDefaults();
-      setSplitName('Routine Planner: 4-Day Split');
+      setSplitName('My Routine Planner');
     }
     setTemplateModalOpen(false);
     triggerSavedFeedback();
@@ -191,7 +191,7 @@ export const WeeklyPlannerScreen: React.FC = () => {
                 title="Click to rename split"
               >
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight hover:text-[#00A3A6] transition-colors">
-                  {splitName || 'Routine Planner: 4-Day Split'}
+                  {splitName || 'My Routine Planner'}
                 </h1>
                 <Edit3
                   size={18}

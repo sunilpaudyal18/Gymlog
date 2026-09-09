@@ -148,68 +148,91 @@ export const TodaySessionCard: React.FC<TodaySessionCardProps> = ({
 
               {/* Routine Selection List with Scroll */}
               <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[50vh] sm:max-h-[55vh]">
-                {routines.map((r) => {
-                  const isCurrent = routine?.id === r.id;
-                  const isDefaultScheduled = defaultRoutineId === r.id;
-
-                  return (
+                {routines.length === 0 ? (
+                  <div className="py-6 px-4 text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 space-y-2.5">
+                    <div className="w-10 h-10 rounded-full bg-[#008B8E]/10 text-[#008B8E] flex items-center justify-center mx-auto">
+                      <Dumbbell size={20} />
+                    </div>
+                    <p className="text-xs font-bold text-[#0F172A]">No Custom Routines Yet</p>
+                    <p className="text-[11px] text-[#64748B] max-w-xs mx-auto">
+                      Create your first custom workout routine or use the weekly planner to construct your split.
+                    </p>
                     <button
-                      key={r.id}
                       type="button"
-                      onClick={() => handleSelectSwap(r.id)}
-                      className={`w-full p-3.5 text-left rounded-2xl border transition-all flex items-center justify-between cursor-pointer group ${
-                        isCurrent
-                          ? 'border-[#008B8E] border-l-[4px] border-l-[#008B8E] bg-[#008B8E]/6 shadow-xs'
-                          : 'border-slate-200/80 hover:border-[#008B8E]/40 hover:bg-slate-50'
-                      }`}
+                      onClick={() => {
+                        setShowSwapModal(false);
+                        navigate('/routines/new');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-[#008B8E] hover:bg-[#00A3A6] text-white text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                            isCurrent
-                              ? 'bg-[#008B8E] text-white'
-                              : 'bg-slate-100 text-slate-500 group-hover:text-[#008B8E] group-hover:bg-[#008B8E]/10'
-                          }`}
-                        >
-                          <Dumbbell size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#008B8E] transition-colors block truncate">
-                              {r.name}
-                            </span>
-                            {isCurrent && (
-                              <span className="text-[10px] font-bold text-[#008B8E] bg-[#008B8E]/10 px-2 py-0.5 rounded-full border border-[#008B8E]/30 shrink-0">
-                                {isSwappedForToday ? 'Swapped for today' : 'Active for today'}
-                              </span>
-                            )}
-                            {isDefaultScheduled && !isCurrent && (
-                              <span className="text-[10px] font-medium text-[#64748B] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shrink-0">
-                                Default Split
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-[#64748B] mt-0.5 block">
-                            {r.exercises.length} exercises • ~{r.estimatedDurationMin || 50} min
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 pl-2">
-                        {isCurrent ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-xl bg-[#008B8E] text-white shadow-2xs">
-                            <Check size={12} className="stroke-[3]" />
-                            <span>Selected</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold text-[#008B8E] group-hover:bg-[#008B8E]/10 px-2.5 py-1 rounded-xl transition-colors">
-                            Select
-                          </span>
-                        )}
-                      </div>
+                      <Plus size={14} />
+                      <span>Create Routine</span>
                     </button>
-                  );
-                })}
+                  </div>
+                ) : (
+                  routines.map((r) => {
+                    const isCurrent = routine?.id === r.id;
+                    const isDefaultScheduled = defaultRoutineId === r.id;
+
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => handleSelectSwap(r.id)}
+                        className={`w-full p-3.5 text-left rounded-2xl border transition-all flex items-center justify-between cursor-pointer group ${
+                          isCurrent
+                            ? 'border-[#008B8E] border-l-[4px] border-l-[#008B8E] bg-[#008B8E]/6 shadow-xs'
+                            : 'border-slate-200/80 hover:border-[#008B8E]/40 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                              isCurrent
+                                ? 'bg-[#008B8E] text-white'
+                                : 'bg-slate-100 text-slate-500 group-hover:text-[#008B8E] group-hover:bg-[#008B8E]/10'
+                            }`}
+                          >
+                            <Dumbbell size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#008B8E] transition-colors block truncate">
+                                {r.name}
+                              </span>
+                              {isCurrent && (
+                                <span className="text-[10px] font-bold text-[#008B8E] bg-[#008B8E]/10 px-2 py-0.5 rounded-full border border-[#008B8E]/30 shrink-0">
+                                  {isSwappedForToday ? 'Swapped for today' : 'Active for today'}
+                                </span>
+                              )}
+                              {isDefaultScheduled && !isCurrent && (
+                                <span className="text-[10px] font-medium text-[#64748B] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shrink-0">
+                                  Default Split
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                              {r.exercises.length} exercises • ~{r.estimatedDurationMin || 50} min
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 pl-2">
+                          {isCurrent ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-xl bg-[#008B8E] text-white shadow-2xs">
+                              <Check size={12} className="stroke-[3]" />
+                              <span>Selected</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold text-[#008B8E] group-hover:bg-[#008B8E]/10 px-2.5 py-1 rounded-xl transition-colors">
+                              Select
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
 
                 {/* Rest Day Option */}
                 <button

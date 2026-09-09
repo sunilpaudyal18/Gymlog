@@ -1,16 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppRouter } from './app/router/AppRouter';
 import { SplashScreen } from './components/ui/SplashScreen';
+import { waitForStorageHydration } from './services/storage/hydrationManager';
 
 export const App: React.FC = () => {
-  const [showSplash, setShowSplash] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    waitForStorageHydration().then(() => {
+      if (mounted) {
+        setIsHydrated(true);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <>
-      {showSplash && (
-        <SplashScreen onComplete={() => setShowSplash(false)} />
+      {(!isHydrated || !splashFinished) && (
+        <SplashScreen onComplete={() => setSplashFinished(true)} />
       )}
-      <AppRouter />
+      {isHydrated && <AppRouter />}
     </>
   );
 };

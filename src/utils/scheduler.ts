@@ -22,35 +22,61 @@ export const DAY_NAMES: Record<number, string> = {
 };
 
 /**
- * Default Recommended Weekly Split:
- * Monday: Chest + Triceps Focus
- * Tuesday: Push Day Workout (Shoulders & Chest)
- * Wednesday: Pull Day Focus (Back + Biceps)
- * Thursday: Leg Destroyer (Quads, Glutes & Calves)
- * Friday: Chest + Triceps Focus (or Arms & Hypertrophy)
- * Saturday: null (Active Recovery & Mobility)
- * Sunday: null (Full Rest & Recovery)
+ * Pristine Blank Slate Default Weekly Schedule:
+ * Every day begins empty (null / Full Rest / Unassigned),
+ * empowering users to build their training split entirely from scratch.
  */
 export const DEFAULT_WEEKLY_SCHEDULE: Record<number, string | null> = {
-  1: 'chest-triceps-focus',
-  2: 'push-day-workout',
-  3: 'pull-day-focus',
-  4: 'leg-destroyer',
-  5: 'chest-triceps-focus',
-  6: null, // Active Recovery
-  0: null, // Rest Day
+  0: null, // Sunday - Full Rest / Unassigned
+  1: null, // Monday - Full Rest / Unassigned
+  2: null, // Tuesday - Full Rest / Unassigned
+  3: null, // Wednesday - Full Rest / Unassigned
+  4: null, // Thursday - Full Rest / Unassigned
+  5: null, // Friday - Full Rest / Unassigned
+  6: null, // Saturday - Full Rest / Unassigned
+};
+
+export const DEFAULT_REST_DAY_INFO = {
+  title: 'Rest & Recovery Day',
+  subtitle: 'Prioritize muscle protein synthesis, hydration, and central nervous system recovery.',
+  tag: 'REST DAY',
 };
 
 export const REST_DAY_INFO: Record<number, { title: string; subtitle: string; tag: string }> = {
-  6: {
-    title: 'Active Recovery & Mobility',
-    subtitle: 'Light stretching, joint mobility, and dynamic core activation.',
-    tag: 'RECOVERY DAY',
-  },
   0: {
     title: 'Full Rest & Muscle Repair',
     subtitle: 'Prioritize protein synthesis, hydration, and central nervous system recovery.',
     tag: 'REST DAY',
+  },
+  1: {
+    title: 'Rest & Recovery Day',
+    subtitle: 'Rest day or assign a new custom routine to train today.',
+    tag: 'REST DAY',
+  },
+  2: {
+    title: 'Rest & Recovery Day',
+    subtitle: 'Rest day or assign a new custom routine to train today.',
+    tag: 'REST DAY',
+  },
+  3: {
+    title: 'Rest & Recovery Day',
+    subtitle: 'Rest day or assign a new custom routine to train today.',
+    tag: 'REST DAY',
+  },
+  4: {
+    title: 'Rest & Recovery Day',
+    subtitle: 'Rest day or assign a new custom routine to train today.',
+    tag: 'REST DAY',
+  },
+  5: {
+    title: 'Rest & Recovery Day',
+    subtitle: 'Rest day or assign a new custom routine to train today.',
+    tag: 'REST DAY',
+  },
+  6: {
+    title: 'Active Recovery & Mobility',
+    subtitle: 'Light stretching, joint mobility, and dynamic core activation.',
+    tag: 'RECOVERY DAY',
   },
 };
 

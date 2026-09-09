@@ -6,6 +6,9 @@ import { useWorkoutStore } from '../stores/useWorkoutStore';
 import { Routine, WorkoutSession, PersonalRecord, UserProfile, Exercise } from '../types';
 import { snapshotRepository } from '../services/database/repositories/snapshotRepository';
 import { workoutRepository } from '../services/database/repositories/workoutRepository';
+import { routineRepository } from '../services/database/repositories/routineRepository';
+import { exerciseRepository } from '../services/database/repositories/exerciseRepository';
+import { routineService } from '../services/data/routineService';
 
 export const DATA_SCHEMA_VERSION = 1;
 
@@ -16,6 +19,8 @@ export interface GymBackupPayload {
   profile: UserProfile;
   preferences: any;
   routines: Routine[];
+  weeklySchedule?: Record<number, string | null>;
+  splitName?: string;
   completedSessions: WorkoutSession[];
   personalRecords: PersonalRecord[];
   favorites: string[];
@@ -54,6 +59,8 @@ export function exportBackupData(): void {
     profile: userState.profile,
     preferences: userState.preferences,
     routines: routineState.routines,
+    weeklySchedule: routineState.weeklySchedule,
+    splitName: routineState.splitName,
     completedSessions: historyState.completedSessions,
     personalRecords: historyState.personalRecords,
     favorites: exerciseState.favorites,
@@ -154,12 +161,20 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
       useUserStore.getState().updatePreferences(payload.preferences);
     }
 
-    // 3. Restore Routines
+    // 3. Restore Routines & Planner Schedule
     if (Array.isArray(payload.routines)) {
       useRoutineStore.setState({
         routines: payload.routines,
-        activeRoutineId: payload.routines[0]?.id || 'chest-triceps-focus',
+        activeRoutineId: payload.routines[0]?.id || '',
       });
+      for (const rt of payload.routines) {
+        await routineRepository.saveRoutine(rt).catch(console.warn);
+      }
+    }
+
+    if (payload.weeklySchedule) {
+      useRoutineStore.getState().setLoadedPlannerSchedule(payload.weeklySchedule, payload.splitName);
+      await routineService.savePlannerSchedule(payload.weeklySchedule, payload.splitName || 'My Routine Planner').catch(console.warn);
     }
 
     // 4. Restore History & PRs
@@ -168,6 +183,9 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
         completedSessions: payload.completedSessions,
         personalRecords: payload.personalRecords || [],
       });
+      for (const wo of payload.completedSessions) {
+        await workoutRepository.saveCompletedWorkout(wo).catch(console.warn);
+      }
     }
 
     // 5. Restore Favorites & Custom Exercises
@@ -182,6 +200,9 @@ export async function applyBackupData(payload: GymBackupPayload): Promise<{ succ
       payload.customExercises.forEach((customEx) => {
         exerciseStore.addExercise(customEx);
       });
+      for (const ex of payload.customExercises) {
+        await exerciseRepository.saveCustomExercise(ex).catch(console.warn);
+      }
     }
 
     // 6. Restore or Clear Active Session

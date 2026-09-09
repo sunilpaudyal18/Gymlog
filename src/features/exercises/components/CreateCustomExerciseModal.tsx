@@ -125,7 +125,7 @@ export const CreateCustomExerciseModal: React.FC<CreateCustomExerciseModalProps>
       defaultRestSeconds,
       isCustom: true,
       instructions: formattedInstructions,
-      imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&auto=format&fit=crop&q=80',
+      imageUrl: '/icon-192.svg',
     };
 
     addExercise(newExercise);

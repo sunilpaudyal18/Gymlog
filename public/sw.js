@@ -25,6 +25,15 @@ const CORE_APP_SHELL = [
   '/icon-512.png',
   '/apple-touch-icon.png',
   '/og-image.png',
+  // Muscle Category Legend Images
+  '/images/legends/arnold-chest.jpg',
+  '/images/legends/ronnie-back.jpg',
+  '/images/legends/tom-legs.jpg',
+  '/images/legends/franco-shoulders.jpg',
+  '/images/legends/larry-biceps.jpg',
+  '/images/legends/dorian-triceps.jpg',
+  '/images/legends/frank-abs.jpg',
+  '/images/legends/forearms.jpg',
 ];
 
 // Install Event: Pre-cache Core Application Shell

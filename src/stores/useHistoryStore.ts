@@ -2,10 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { WorkoutSession, PersonalRecord } from '../types';
 import { indexedDbStorage } from '../services/database/indexedDbStorage';
+import { workoutService } from '../services/data/workoutService';
 
 interface HistoryState {
   completedSessions: WorkoutSession[];
   personalRecords: PersonalRecord[];
+  setLoadedWorkouts: (sessions: WorkoutSession[]) => void;
+  setLoadedPersonalRecords: (prs: PersonalRecord[]) => void;
   addCompletedSession: (session: WorkoutSession) => void;
   getWeeklyVolume: () => number;
   getTotalWorkouts: () => number;
@@ -134,30 +137,46 @@ const INITIAL_PRS: PersonalRecord[] = [
 export const useHistoryStore = create<HistoryState>()(
   persist(
     (set, get) => ({
-      completedSessions: INITIAL_HISTORY,
-      personalRecords: INITIAL_PRS,
+      completedSessions: [],
+      personalRecords: [],
 
-      addCompletedSession: (session) =>
+      setLoadedWorkouts: (sessions) => {
+        set({ completedSessions: sessions });
+      },
+
+      setLoadedPersonalRecords: (prs) => {
+        set({ personalRecords: prs });
+      },
+
+      addCompletedSession: (session) => {
+        workoutService.saveCompletedWorkout(session).catch(console.error);
         set((state) => ({
           completedSessions: [session, ...state.completedSessions],
-        })),
+        }));
+      },
 
       getWeeklyVolume: () => {
-        return 12540; // Matching the exact reference metric
+        const { completedSessions } = get();
+        const oneWeekAgo = Date.now() - 7 * 86400000;
+        return completedSessions
+          .filter((s) => s.completedAt !== undefined && s.completedAt >= oneWeekAgo)
+          .reduce((sum, s) => sum + (s.totalVolumeKg || 0), 0);
       },
 
       getTotalWorkouts: () => {
-        return 48; // Matching reference metric
+        return get().completedSessions.length;
       },
 
       getWeeklyFrequency: () => {
-        return 4; // 4/wk
+        const { completedSessions } = get();
+        const oneWeekAgo = Date.now() - 7 * 86400000;
+        return completedSessions.filter((s) => s.completedAt !== undefined && s.completedAt >= oneWeekAgo).length;
       },
 
       resetToDefaults: () => {
         set({
-          completedSessions: INITIAL_HISTORY,
-          personalRecords: INITIAL_PRS,
+          completedSessions: [],
+          personalRecords: [],
         });
       },
     }),
@@ -165,7 +184,8 @@ export const useHistoryStore = create<HistoryState>()(
       name: 'gym_history_store_v2',
       storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
-        completedSessions: state.completedSessions,
+        // Phase 3: Completed workouts are durably stored in IndexedDB STORES.WORKOUTS
+        // Only personal records are persisted in kv_store, preventing huge JSON serialization in localStorage
         personalRecords: state.personalRecords,
       }),
     }

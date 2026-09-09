@@ -8,6 +8,8 @@ import {
   removeProtectedCustomExercise,
 } from '../services/storage/protectedStorage';
 
+import { exerciseService } from '../services/data/exerciseService';
+
 export interface EquipmentCategoryInfo {
   id: Equipment | 'all';
   label: string;
@@ -32,6 +34,7 @@ interface ExerciseState {
   toggleMultiSelect: (exerciseId: string) => void;
   clearMultiSelect: () => void;
   addRecentExercise: (exerciseId: string) => void;
+  setLoadedCustomExercises: (customExercises: Exercise[]) => void;
   addExercise: (exercise: Exercise) => void;
   updateExercise: (id: string, updated: Partial<Exercise>) => void;
   deleteExercise: (id: string) => void;
@@ -81,9 +84,21 @@ export const useExerciseStore = create<ExerciseState>()(
           ].slice(0, 10),
         })),
 
+      setLoadedCustomExercises: (customExercises) => {
+        set(() => {
+          // Merge custom exercises from IndexedDB into existing library without duplicates
+          const nonCustom = PRESET_EXERCISES;
+          const customIds = new Set(customExercises.map((e) => e.id));
+          const filteredNonCustom = nonCustom.filter((e) => !customIds.has(e.id));
+          return {
+            exercises: [...customExercises, ...filteredNonCustom],
+          };
+        });
+      },
+
       addExercise: (exercise) => {
         if (exercise.isCustom) {
-          persistProtectedCustomExercise(exercise);
+          exerciseService.saveCustomExercise(exercise).catch(console.error);
         }
         set((state) => ({
           exercises: [exercise, ...state.exercises.filter((e) => e.id !== exercise.id)],
@@ -96,7 +111,7 @@ export const useExerciseStore = create<ExerciseState>()(
             if (e.id === id) {
               const merged = { ...e, ...updated };
               if (merged.isCustom) {
-                persistProtectedCustomExercise(merged);
+                exerciseService.saveCustomExercise(merged).catch(console.error);
               }
               return merged;
             }
@@ -107,7 +122,7 @@ export const useExerciseStore = create<ExerciseState>()(
       },
 
       deleteExercise: (id) => {
-        removeProtectedCustomExercise(id);
+        exerciseService.deleteCustomExercise(id).catch(console.error);
         set((state) => ({
           exercises: state.exercises.filter((e) => e.id !== id),
           favorites: state.favorites.filter((favId) => favId !== id),
@@ -280,7 +295,8 @@ export const useExerciseStore = create<ExerciseState>()(
       name: 'gym_exercise_library_store_v2',
       storage: createJSONStorage(() => indexedDbStorage),
       partialize: (state) => ({
-        exercises: state.exercises,
+        // Phase 3: Exercises are durably stored in IndexedDB STORES.EXERCISES
+        // Only lightweight user preferences and history IDs are persisted in kv_store
         favorites: state.favorites,
         recentExerciseIds: state.recentExerciseIds,
       }),

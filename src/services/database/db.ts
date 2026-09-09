@@ -4,6 +4,11 @@
  * Version: 1
  *
  * Local Data is the Single Source of Truth.
+ * Hardened with:
+ * - Strictly additive, non-destructive schema migrations.
+ * - Onblocked listener to prevent hangs when opening multiple tabs.
+ * - Granular database status tracking ('uninitialized' | 'connecting' | 'ready' | 'error').
+ * - Safe QuotaExceededError and abort handling in transactions.
  */
 
 export const DB_NAME = 'gym_offline_db';
@@ -21,7 +26,25 @@ export const STORES = {
 
 export type StoreName = typeof STORES[keyof typeof STORES];
 
+export type DBStatus = 'uninitialized' | 'connecting' | 'ready' | 'error';
+
+let dbStatus: DBStatus = 'uninitialized';
 let dbPromise: Promise<IDBDatabase> | null = null;
+let lastDbError: Error | null = null;
+
+/**
+ * Returns current IndexedDB initialization status.
+ */
+export function getDatabaseStatus(): DBStatus {
+  return dbStatus;
+}
+
+/**
+ * Returns the last recorded database initialization or transaction error.
+ */
+export function getLastDatabaseError(): Error | null {
+  return lastDbError;
+}
 
 /**
  * Opens and initializes the IndexedDB database instance with transactional schema versioning.
@@ -29,19 +52,31 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 export function getDatabase(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
 
+  dbStatus = 'connecting';
+
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
-      reject(new Error('IndexedDB is not supported in this browser environment.'));
+      const err = new Error('IndexedDB is not supported in this browser environment.');
+      dbStatus = 'error';
+      lastDbError = err;
+      reject(err);
       return;
     }
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+    // Prevent open request hang when another tab has the database open with an older version
+    request.onblocked = () => {
+      console.warn('[DB] IndexedDB open request is blocked by another tab. Please close or reload other tabs.');
+    };
+
     request.onupgradeneeded = (event) => {
       const db = request.result;
       const oldVersion = event.oldVersion;
 
-      // Version 1 Schema Setup
+      console.info(`[DB] Upgrading schema: oldVersion=${oldVersion} -> newVersion=${DB_VERSION}`);
+
+      // Version 1 Schema Setup (Strictly Additive)
       if (oldVersion < 1) {
         // 1. Key-Value Store for Zustand store persistence
         if (!db.objectStoreNames.contains(STORES.KV_STORE)) {
@@ -85,23 +120,47 @@ export function getDatabase(): Promise<IDBDatabase> {
           db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
         }
       }
+
+      // Future versions (e.g. v2 -> v3) follow this additive pattern:
+      // if (oldVersion < 2) { ... }
     };
 
     request.onsuccess = () => {
       const db = request.result;
+      dbStatus = 'ready';
+      lastDbError = null;
+
+      // Track schema migration version in metadata store asynchronously
+      try {
+        const tx = db.transaction(STORES.METADATA, 'readwrite');
+        const metaStore = tx.objectStore(STORES.METADATA);
+        metaStore.put({
+          key: 'schema_info',
+          dbVersion: DB_VERSION,
+          openedAt: Date.now(),
+        });
+      } catch {
+        // Metadata write is non-critical
+      }
 
       // Handle unexpected database close/version change
       db.onversionchange = () => {
+        console.warn('[DB] Database version changed in another process. Closing connection safely.');
         db.close();
         dbPromise = null;
+        dbStatus = 'uninitialized';
       };
 
       resolve(db);
     };
 
     request.onerror = () => {
+      const err = request.error || new Error('Failed to open IndexedDB database.');
       dbPromise = null;
-      reject(request.error || new Error('Failed to open IndexedDB database.'));
+      dbStatus = 'error';
+      lastDbError = err;
+      console.error('[DB] Failed to open IndexedDB database:', err);
+      reject(err);
     };
   });
 
@@ -129,14 +188,19 @@ export async function withStore<T>(
       };
 
       transaction.onerror = () => {
-        reject(transaction.error || new Error(`Transaction failed on ${storeName}`));
+        const err = transaction.error || new Error(`Transaction failed on store "${storeName}"`);
+        if (err.name === 'QuotaExceededError') {
+          console.error(`[DB] QuotaExceededError while operating on "${storeName}". Storage quota reached.`);
+        }
+        reject(err);
       };
 
       transaction.onabort = () => {
-        reject(new Error(`Transaction aborted on ${storeName}`));
+        const err = transaction.error || new Error(`Transaction aborted on store "${storeName}"`);
+        reject(err);
       };
 
-      // Execute callback
+      // Execute callback safely
       const callbackResult = callback(store, transaction);
       if (callbackResult instanceof Promise) {
         callbackResult
@@ -144,7 +208,11 @@ export async function withStore<T>(
             result = res;
           })
           .catch((err) => {
-            transaction.abort();
+            try {
+              transaction.abort();
+            } catch {
+              // Ignore if already aborted
+            }
             reject(err);
           });
       } else {
@@ -196,3 +264,47 @@ export async function kvDelete(key: string): Promise<void> {
     });
   });
 }
+
+/**
+ * Deep IndexedDB Clearance: Purges all core data object stores in a single transaction.
+ */
+export async function clearAllDatabaseStores(): Promise<void> {
+  const db = await getDatabase();
+  const targetStores: StoreName[] = [
+    STORES.KV_STORE,
+    STORES.ACTIVE_SESSION,
+    STORES.WORKOUTS,
+    STORES.ROUTINES,
+    STORES.EXERCISES,
+    STORES.SNAPSHOTS,
+  ];
+
+  return new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(targetStores, 'readwrite');
+
+      targetStores.forEach((storeName) => {
+        if (db.objectStoreNames.contains(storeName)) {
+          tx.objectStore(storeName).clear();
+        }
+      });
+
+      tx.oncomplete = () => {
+        console.info('[DB] Successfully cleared all IndexedDB stores in gym_offline_db.');
+        resolve();
+      };
+
+      tx.onerror = () => {
+        console.error('[DB] Transaction error while clearing stores:', tx.error);
+        reject(tx.error);
+      };
+
+      tx.onabort = () => {
+        reject(new Error('Clear all stores transaction aborted.'));
+      };
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+

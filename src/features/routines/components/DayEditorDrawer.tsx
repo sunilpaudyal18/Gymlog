@@ -319,24 +319,12 @@ export const DayEditorDrawer: React.FC<DayEditorDrawerProps> = ({
       persistProtectedSavedRoutine(savedRoutine);
     }
 
-    // Direct synchronous localStorage snapshot for guaranteed offline persistence
+    // Record metadata sync timestamp
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const offlineSnapshot = {
-          dayIndex,
-          dayName,
-          isRestDay,
-          routineName: routineName.trim() || `${dayName} Workout`,
-          targetMuscles: selectedMuscles,
-          exercisesCount: selectedExercises.length,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(`gym_day_${dayIndex}_saved`, JSON.stringify(offlineSnapshot));
         localStorage.setItem('gym_last_offline_sync', String(Date.now()));
       }
-    } catch (e) {
-      console.warn('Direct localStorage backup wrote with fallback', e);
-    }
+    } catch (_) {}
 
     setSaveSuccess(true);
     setTimeout(() => {

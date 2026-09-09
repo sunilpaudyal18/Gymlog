@@ -5,15 +5,15 @@ import { PRESET_ROUTINES } from '../constants/routines';
 import { indexedDbStorage } from '../services/database/indexedDbStorage';
 import { calculateEstimatedDurationMin } from '../utils/workoutCalc';
 import { DEFAULT_WEEKLY_SCHEDULE, getCurrentDayIndex } from '../utils/scheduler';
-import {
-  persistProtectedSavedRoutine,
-  removeProtectedSavedRoutine,
-} from '../services/storage/protectedStorage';
+import { routineService } from '../services/data/routineService';
 
 interface RoutineState {
   routines: Routine[];
   activeRoutineId: string;
   setActiveRoutineId: (id: string) => void;
+  setLoadedRoutines: (routines: Routine[]) => void;
+  setLoadedPlannerSchedule: (schedule: Record<number, string | null>, splitName?: string) => void;
+  isHydrated: boolean;
   addRoutine: (routine: Routine) => void;
   updateRoutine: (id: string, updated: Partial<Routine>) => void;
   deleteRoutine: (id: string) => void;
@@ -42,19 +42,55 @@ interface RoutineState {
 export const useRoutineStore = create<RoutineState>()(
   persist(
     (set, get) => ({
-      routines: PRESET_ROUTINES,
-      activeRoutineId: 'chest-triceps-focus',
+      routines: [],
+      activeRoutineId: '',
       weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
-      splitName: 'Routine Planner: 4-Day Split',
+      splitName: 'My Routine Planner',
+      isHydrated: false,
 
-      setSplitName: (name) => set({ splitName: name }),
+      setLoadedPlannerSchedule: (schedule, splitName) => {
+        set((state) => ({
+          weeklySchedule: {
+            0: schedule?.[0] ?? null,
+            1: schedule?.[1] ?? null,
+            2: schedule?.[2] ?? null,
+            3: schedule?.[3] ?? null,
+            4: schedule?.[4] ?? null,
+            5: schedule?.[5] ?? null,
+            6: schedule?.[6] ?? null,
+          },
+          splitName: splitName || state.splitName || 'My Routine Planner',
+          isHydrated: true,
+        }));
+      },
+
+      setSplitName: (name) => {
+        set((state) => {
+          routineService.savePlannerSchedule(state.weeklySchedule, name).catch(console.error);
+          return { splitName: name };
+        });
+      },
+
+      setLoadedRoutines: (loadedRoutines) => {
+        set((state) => {
+          const activeId =
+            state.activeRoutineId && loadedRoutines.some((r) => r.id === state.activeRoutineId)
+              ? state.activeRoutineId
+              : (loadedRoutines[0]?.id || '');
+          return {
+            routines: loadedRoutines,
+            activeRoutineId: activeId,
+            isHydrated: true,
+          };
+        });
+      },
 
       setDayRest: (dayOfWeek) => {
         get().setDaySchedule(dayOfWeek, null);
       },
 
       setDayCustomRoutine: (dayOfWeek, data) => {
-        const { routines, weeklySchedule } = get();
+        const { routines, weeklySchedule, splitName } = get();
         const existingRoutineId = weeklySchedule[dayOfWeek];
         const estimatedMin = calculateEstimatedDurationMin(data.exercises);
 
@@ -68,7 +104,7 @@ export const useRoutineStore = create<RoutineState>()(
             estimatedDurationMin: estimatedMin,
             updatedAt: Date.now(),
           };
-          persistProtectedSavedRoutine(updatedRoutine);
+          routineService.saveRoutine(updatedRoutine).catch(console.error);
           set((state) => ({
             routines: state.routines.map((r) => (r.id === existingRoutineId ? updatedRoutine : r)),
           }));
@@ -86,13 +122,15 @@ export const useRoutineStore = create<RoutineState>()(
             updatedAt: Date.now(),
             lastPerformed: 'Not performed yet',
           };
-          persistProtectedSavedRoutine(newRoutine);
+          routineService.saveRoutine(newRoutine).catch(console.error);
+          const nextSchedule = {
+            ...weeklySchedule,
+            [dayOfWeek]: newId,
+          };
+          routineService.savePlannerSchedule(nextSchedule, splitName).catch(console.error);
           set((state) => ({
             routines: [newRoutine, ...state.routines],
-            weeklySchedule: {
-              ...state.weeklySchedule,
-              [dayOfWeek]: newId,
-            },
+            weeklySchedule: nextSchedule,
           }));
           return newRoutine;
         }
@@ -111,7 +149,7 @@ export const useRoutineStore = create<RoutineState>()(
     const estimatedMin =
       routine.estimatedDurationMin || calculateEstimatedDurationMin(routine.exercises);
     const enriched = { ...routine, estimatedDurationMin: estimatedMin };
-    persistProtectedSavedRoutine(enriched);
+    routineService.saveRoutine(enriched).catch(console.error);
     set((state) => ({
       routines: [enriched, ...state.routines],
     }));
@@ -129,22 +167,39 @@ export const useRoutineStore = create<RoutineState>()(
           estimatedDurationMin: estimatedMin,
           updatedAt: Date.now(),
         };
-        persistProtectedSavedRoutine(merged);
+        routineService.saveRoutine(merged).catch(console.error);
         return merged;
       }),
     })),
 
   deleteRoutine: (id) => {
-    removeProtectedSavedRoutine(id);
+    routineService.deleteRoutine(id).catch(console.error);
     set((state) => {
       const remaining = state.routines.filter((r) => r.id !== id);
       const newActiveId =
         state.activeRoutineId === id && remaining.length > 0
           ? remaining[0].id
+          : state.activeRoutineId === id
+          ? ''
           : state.activeRoutineId;
+
+      // Unassign deleted routine from weekly schedule if present
+      let scheduleChanged = false;
+      const updatedSchedule = { ...state.weeklySchedule };
+      for (let d = 0; d < 7; d++) {
+        if (updatedSchedule[d] === id) {
+          updatedSchedule[d] = null;
+          scheduleChanged = true;
+        }
+      }
+      if (scheduleChanged) {
+        routineService.savePlannerSchedule(updatedSchedule, state.splitName).catch(console.error);
+      }
+
       return {
         routines: remaining,
         activeRoutineId: newActiveId,
+        weeklySchedule: updatedSchedule,
       };
     });
   },
@@ -160,6 +215,7 @@ export const useRoutineStore = create<RoutineState>()(
       updatedAt: Date.now(),
       lastPerformed: 'Never',
     };
+    routineService.saveRoutine(duplicated).catch(console.error);
     set((state) => ({
       routines: [duplicated, ...state.routines],
     }));
@@ -173,11 +229,13 @@ export const useRoutineStore = create<RoutineState>()(
         const [moved] = list.splice(fromIndex, 1);
         list.splice(toIndex, 0, moved);
         const reordered = list.map((item, idx) => ({ ...item, order: idx + 1 }));
-        return {
+        const updated = {
           ...r,
           exercises: reordered,
           updatedAt: Date.now(),
         };
+        routineService.saveRoutine(updated).catch(console.error);
+        return updated;
       }),
     })),
 
@@ -195,12 +253,14 @@ export const useRoutineStore = create<RoutineState>()(
         } else {
           newExercises = [...r.exercises, { ...exercise, order: r.exercises.length + 1 }];
         }
-        return {
+        const updated = {
           ...r,
           exercises: newExercises,
           estimatedDurationMin: calculateEstimatedDurationMin(newExercises),
           updatedAt: Date.now(),
         };
+        routineService.saveRoutine(updated).catch(console.error);
+        return updated;
       }),
     })),
 
@@ -211,12 +271,14 @@ export const useRoutineStore = create<RoutineState>()(
         const newExercises = r.exercises.map((e) =>
           e.id === exerciseId || e.exerciseId === exerciseId ? { ...e, ...updated } : e
         );
-        return {
+        const updatedRt = {
           ...r,
           exercises: newExercises,
           estimatedDurationMin: calculateEstimatedDurationMin(newExercises),
           updatedAt: Date.now(),
         };
+        routineService.saveRoutine(updatedRt).catch(console.error);
+        return updatedRt;
       }),
     })),
 
@@ -226,22 +288,29 @@ export const useRoutineStore = create<RoutineState>()(
         if (r.id !== routineId) return r;
         const filtered = r.exercises.filter((ex) => ex.id !== exerciseId && ex.exerciseId !== exerciseId);
         const reindexed = filtered.map((ex, idx) => ({ ...ex, order: idx + 1 }));
-        return {
+        const updated = {
           ...r,
           exercises: reindexed,
           estimatedDurationMin: calculateEstimatedDurationMin(reindexed),
           updatedAt: Date.now(),
         };
+        routineService.saveRoutine(updated).catch(console.error);
+        return updated;
       }),
     })),
 
-  setDaySchedule: (dayOfWeek, routineId) =>
-    set((state) => ({
-      weeklySchedule: {
+  setDaySchedule: (dayOfWeek, routineId) => {
+    set((state) => {
+      const next = {
         ...state.weeklySchedule,
         [dayOfWeek]: routineId,
-      },
-    })),
+      };
+      routineService.savePlannerSchedule(next, state.splitName).catch(console.error);
+      return {
+        weeklySchedule: next,
+      };
+    });
+  },
 
   swapTodayRoutine: (routineId) => {
     const todayIndex = getCurrentDayIndex();
@@ -252,7 +321,12 @@ export const useRoutineStore = create<RoutineState>()(
     const { routines, weeklySchedule } = get();
     const routineId = weeklySchedule[dayOfWeek];
     if (!routineId) return null;
-    return routines.find((r) => r.id === routineId) || null;
+    // 1. First check user custom/saved routines in IndexedDB
+    const userRoutine = routines.find((r) => r.id === routineId);
+    if (userRoutine) return userRoutine;
+    // 2. Check preset routines (if user assigned a built-in split template)
+    const preset = PRESET_ROUTINES.find((r) => r.id === routineId);
+    return preset || null;
   },
 
   getTodayScheduledRoutine: () => {
@@ -260,7 +334,10 @@ export const useRoutineStore = create<RoutineState>()(
     return get().getScheduledRoutineForDay(todayIndex);
   },
 
-  getRoutineById: (id) => get().routines.find((r) => r.id === id),
+  getRoutineById: (id) => {
+    const { routines } = get();
+    return routines.find((r) => r.id === id) || PRESET_ROUTINES.find((r) => r.id === id);
+  },
 
   getActiveRoutine: () => {
     // Check if there is a scheduled routine for today first
@@ -268,15 +345,17 @@ export const useRoutineStore = create<RoutineState>()(
     if (todayRoutine) return todayRoutine;
 
     const { routines, activeRoutineId } = get();
+    if (!routines || routines.length === 0) return undefined;
     return routines.find((r) => r.id === activeRoutineId) || routines[0];
   },
 
   resetToDefaults: () => {
     set({
-      routines: PRESET_ROUTINES,
-      activeRoutineId: 'chest-triceps-focus',
-      weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
-      splitName: 'Routine Planner: 4-Day Split',
+      routines: [],
+      activeRoutineId: '',
+      weeklySchedule: { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
+      splitName: 'My Routine Planner',
+      isHydrated: true,
     });
   },
 }),

@@ -2,9 +2,13 @@
  * Custom Asynchronous StateStorage Adapter for Zustand Persist Middleware
  * Primary Backend: IndexedDB (gym_offline_db -> kv_store)
  *
- * Automatic One-Time Migration:
- * Inspects legacy localStorage on initial read, migrates data to IndexedDB,
- * and clears legacy localStorage key to maintain a single source of truth.
+ * Phase 3 Decoupling:
+ * - IndexedDB is the durable source of truth.
+ * - Large user datasets (workouts, exercises, routines, active session) are stored
+ *   in IndexedDB and are NOT mirrored into localStorage to prevent QuotaExceededError
+ *   and heavy JSON stringification lag on the main thread.
+ * - Legacy localStorage values are inspected on startup as a backward-compatible fallback,
+ *   migrated into IndexedDB, and preserved as a safe recovery path.
  */
 
 import { StateStorage } from 'zustand/middleware';
@@ -13,29 +17,31 @@ import { kvGet, kvSet, kvDelete } from './db';
 // In-memory fallback for environments with blocked storage
 const memoryFallback = new Map<string, string>();
 
+// Large collection keys that must not bloat localStorage
+const LARGE_USER_DATA_KEYS = new Set([
+  'gym_history_store_v2',
+  'gym_exercise_library_store_v2',
+  'gym_routines_store_v2',
+  'gym_active_workout_store',
+]);
+
 /**
  * Creates an asynchronous StateStorage engine backed by IndexedDB.
  */
 export const indexedDbStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     try {
-      // 1. Attempt to fetch from IndexedDB
+      // 1. Primary Read: Fetch from IndexedDB kv_store
       const value = await kvGet<string>(name);
       if (value !== null && value !== undefined) {
-        // Keep localStorage mirrored for synchronous offline resilience
-        try {
-          if (typeof window !== 'undefined' && window.localStorage) {
-            localStorage.setItem(name, value);
-          }
-        } catch (_) {}
         return value;
       }
 
-      // 2. Read from localStorage fallback
+      // 2. Fallback Read: Inspect legacy localStorage for existing user data
       if (typeof window !== 'undefined' && window.localStorage) {
         const legacyValue = localStorage.getItem(name);
         if (legacyValue) {
-          // Asynchronously ensure it is written to IndexedDB
+          // Asynchronously migrate to IndexedDB as durable store
           kvSet(name, legacyValue).catch(() => {});
           return legacyValue;
         }
@@ -53,22 +59,25 @@ export const indexedDbStorage: StateStorage = {
   },
 
   setItem: async (name: string, value: string): Promise<void> => {
-    // 1. Mirror write to localStorage for instant synchronous offline availability
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(name, value);
+    // 1. Write to memory fallback immediately for synchronous availability
+    memoryFallback.set(name, value);
+
+    // 2. Only mirror lightweight metadata keys to localStorage; never large datasets
+    if (!LARGE_USER_DATA_KEYS.has(name)) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(name, value);
+        }
+      } catch (lsErr) {
+        console.warn(`[GYM DB] LocalStorage write error for metadata key "${name}":`, lsErr);
       }
-    } catch (lsErr) {
-      console.warn(`[GYM DB] LocalStorage write error for "${name}":`, lsErr);
     }
 
-    // 2. Primary asynchronous persistence to IndexedDB
+    // 3. Primary asynchronous persistence to IndexedDB
     try {
       await kvSet(name, value);
-      memoryFallback.set(name, value);
     } catch (err) {
       console.error(`[GYM DB] Error writing "${name}" to IndexedDB:`, err);
-      memoryFallback.set(name, value);
     }
   },
 

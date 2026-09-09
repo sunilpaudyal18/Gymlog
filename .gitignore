@@ -28,3 +28,6 @@ dist-ssr
 design/
 design/**
 
+# Scratch directory
+scratch/
+

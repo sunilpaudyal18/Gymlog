@@ -26,6 +26,7 @@ import {
   applyBackupData,
   GymBackupPayload,
 } from '../../utils/backupManager';
+import { executeCompleteDataPurge } from '../../services/storage/resetManager';
 
 type SettingsCategory = 'all' | 'training' | 'timer' | 'audio' | 'data';
 
@@ -108,11 +109,19 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleResetData = () => {
-    useRoutineStore.getState().resetToDefaults();
-    useHistoryStore.getState().resetToDefaults();
-    setShowResetModal(false);
-    navigate('/');
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetData = async () => {
+    setIsResetting(true);
+    try {
+      await executeCompleteDataPurge();
+      setShowResetModal(false);
+      navigate('/');
+    } catch (err) {
+      console.error('Failed to reset all data:', err);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const restOptions = [
@@ -508,22 +517,24 @@ export const SettingsScreen: React.FC = () => {
               <h3 className="text-base font-bold text-[#0F172A]">Reset All Data?</h3>
             </div>
             <p className="text-xs text-[#475569] leading-relaxed">
-              This will restore the factory workout routines and reset your history to initial preset state. You can export a backup first to avoid losing data.
+              This will permanently purge all workout logs, custom splits, routines, and exercises from IndexedDB and local storage. Your app will return to a clean, empty state.
             </p>
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
                 type="button"
+                disabled={isResetting}
                 onClick={() => setShowResetModal(false)}
-                className="bg-[#F1F5F9] border border-[#CBD5E1] hover:bg-[#E2E8F0] text-[#0F172A] font-bold py-2.5 px-3 rounded-xl text-xs uppercase cursor-pointer"
+                className="bg-[#F1F5F9] border border-[#CBD5E1] hover:bg-[#E2E8F0] text-[#0F172A] font-bold py-2.5 px-3 rounded-xl text-xs uppercase cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isResetting}
                 onClick={handleResetData}
-                className="bg-[#EF4444] text-white font-bold py-2.5 px-3 rounded-xl text-xs uppercase hover:bg-[#DC2626] cursor-pointer"
+                className="bg-[#EF4444] text-white font-bold py-2.5 px-3 rounded-xl text-xs uppercase hover:bg-[#DC2626] cursor-pointer disabled:opacity-50"
               >
-                Reset
+                {isResetting ? 'Resetting...' : 'Reset'}
               </button>
             </div>
           </div>
